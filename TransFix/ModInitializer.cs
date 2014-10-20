@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -108,6 +109,15 @@ namespace TransFix
         {
             long start = DateTime.UtcNow.Ticks;
             int count = 0;
+
+            foreach (var def in DefDatabase<SkillDef>.AllDefs)
+            {
+                if (!IsTranslated<SkillDef>(def.defName + ".label"))
+                {
+                    def.label = def.skillLabel;
+                    ++count;
+                }
+            }
             foreach (var def in DefDatabase<ThingDef>.AllDefs)
             {
                 if (def.category == EntityCategory.Pawn)
@@ -118,8 +128,10 @@ namespace TransFix
                     if (race != null)
                     {
                         object[] labels = null;
+                        //引用ThingDef中的物种名称而非PawnKindDef中的生物名称(人类是按照势力等分开的)
+
                         //加判断太麻烦了而且概率不大, 还不如再Translate一次
-                        //if (IsTranslated<ThingDef>(def.defName + ".label"))
+                        //if (IsTranslated<ThingDef>(race.defName + ".label"))
                         {
                             labels = new object[] { def.label };
                         }
