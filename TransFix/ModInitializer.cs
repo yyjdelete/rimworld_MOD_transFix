@@ -80,8 +80,15 @@ namespace TransFix
                             if (oldLang != newLang)
                             {
                                 oldLang = newLang;
-                                Log.Message("Fixing trans...");
-                                FixTransLocked();
+                                if (newLang.folderName != LanguageDatabase.DefaultLangFolderName)
+                                {
+                                    Log.Message("Fixing trans...");
+                                    FixTransLocked();
+                                }
+                                else
+                                {
+                                    Log.Message("Skip trans for English.");
+                                }
                             }
                         }
                     }
@@ -137,7 +144,7 @@ namespace TransFix
                         }
 
                         var meat = race.meatDef;
-                        if (meat != null)
+                        if (meat != null)//Xxx_Meat
                         {
                             //NOTE: some pawns use Metal as meat of them!!!!
                             //Log.Message("" + def.defName + "->" + meat.defName);
@@ -161,7 +168,7 @@ namespace TransFix
                         }
 
                         var leather = race.leatherDef;
-                        if (leather != null)
+                        if (leather != null)//Xxx_Leather
                         {
                             //Log.Message("" + def.defName + "->" + leather.defName);
                             if (!IsTranslated<ThingDef>(leather.defName + ".label"))
@@ -184,7 +191,7 @@ namespace TransFix
                         }
 
                         var corpse = race.corpseDef;
-                        if (corpse != null)
+                        if (corpse != null)//Xxx_Corpse
                         {
                             if (!IsTranslated<ThingDef>(corpse.defName + ".label"))
                             {
@@ -206,7 +213,7 @@ namespace TransFix
                     if (plant != null)
                     {
                         var seed = plant.seedDef;
-                        if (seed != null)
+                        if (seed != null)//Xxx_Seed
                         {
                             if (!IsTranslated<ThingDef>(seed.defName + ".label"))
                             {
@@ -227,12 +234,94 @@ namespace TransFix
                         }
                     }
                 }
+                else if (!String.IsNullOrEmpty(def.designationCategory))//EntityCategory.Building
+                {
+                    //ThingDefGenerator_Buildings(need not??)->select more than one
+                    //ThingDef.frameDef:Xxx_Frame.label/desc > Xxx.label + "FrameLabelExtra".Translate()/Xxx.description
+                    //ThingDef.blueprintDef:Xxx_Blueprint.label/desc > Xxx.label + "BlueprintLabelExtra".Translate()/null
+                    var frameDef = def.frameDef;
+                    if (frameDef != null)//Xxx_Frame
+                    {
+                        if (!IsTranslated<ThingDef>(frameDef.defName + ".label"))
+                        {
+                            frameDef.label = def.label + "FrameLabelExtra".Translate();
+                            ++count;
+                        }
+                        if (!IsTranslated<ThingDef>(frameDef.defName + ".description"))
+                        {
+                            frameDef.description = def.description;
+                            ++count;
+                        }
+                    }
+                    var blueprintDef = def.blueprintDef;
+                    if (blueprintDef != null)
+                    {
+                        if (!IsTranslated<ThingDef>(blueprintDef.defName + ".label"))
+                        {
+                            blueprintDef.label = def.label + "BlueprintLabelExtra".Translate();
+                            ++count;
+                        }
+                        if (!IsTranslated<ThingDef>(blueprintDef.defName + ".description"))
+                        {
+                            blueprintDef.description = def.description;
+                            ++count;
+                        }
+                    }
+                }
+                if (def.IsStuff)//Maybe Plant
+                {
+                    //def.IsStuff == (def.stuffProps != null)
+                    var stuffProps = def.stuffProps;
+                    if (stuffProps.nameAsStuff != null)
+                    {
+                        if (!IsTranslated<ThingDef>(def.defName + ".stuffProps.nameAsStuff"))
+                        {
+                            stuffProps.nameAsStuff = null;
+                            ++count;
+                        }
+                    }
+                }
             }
-            //ThingDefGenerator_Buildings(need not)
-            //ThingDef.frameDef:Xxx_Frame.label/desc > Xxx.label + "FrameLabelExtra".Translate()/Xxx.description
-            //ThingDef.blueprintDef:Xxx_Blueprint.label/desc > Xxx.label + "BlueprintLabelExtra".Translate()/null
-            //TerrainDef.frameDef:Xxx_Frame.label/desc > Xxx.label + "FrameLabelExtra".Translate()/"Terrain building in progress."
-            //TerrainDef.blueprintDef:Xxx_Blueprint.label/desc > Xxx.label + "BlueprintLabelExtra".Translate()/null
+
+            foreach (var def in DefDatabase<TerrainDef>.AllDefs)
+            {
+                if (!String.IsNullOrEmpty(def.designationCategory))
+                {
+                    //ThingDefGenerator_Buildings(need not??)->select more than one
+                    //TerrainDef.frameDef:Xxx_Frame.label/desc > Xxx.label + "FrameLabelExtra".Translate()/"Terrain building in progress."
+                    //TerrainDef.blueprintDef:Xxx_Blueprint.label/desc > Xxx.label + "BlueprintLabelExtra".Translate()/null
+                    var frameDef = def.frameDef;
+                    if (frameDef != null)//Xxx_Frame
+                    {
+                        if (!IsTranslated<ThingDef>(frameDef.defName + ".label"))
+                        {
+                            frameDef.label = def.label + "FrameLabelExtra".Translate();
+                            ++count;
+                        }
+                        if (!IsTranslated<ThingDef>(frameDef.defName + ".description"))
+                        {
+                            frameDef.description = def.description;
+                            ++count;
+                        }
+                    }
+                    var blueprintDef = def.blueprintDef;
+                    if (blueprintDef != null)
+                    {
+                        if (!IsTranslated<ThingDef>(blueprintDef.defName + ".label"))
+                        {
+                            blueprintDef.label = def.label + "BlueprintLabelExtra".Translate();
+                            ++count;
+                        }
+                        if (!IsTranslated<ThingDef>(blueprintDef.defName + ".description"))
+                        {
+                            blueprintDef.description = def.description;
+                            ++count;
+                        }
+                    }
+
+                }
+
+            }
 
             //处理研究完成时的描述
             foreach (var def in DefDatabase<ResearchProjectDef>.AllDefs)
