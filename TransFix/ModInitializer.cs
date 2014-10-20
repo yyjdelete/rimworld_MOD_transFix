@@ -11,16 +11,13 @@ namespace TransFix
 {
  
 
-    public class ModInitializer : ITab, IDisposable
+    public class ModInitializer : ITab
     {
-        private static string modName = "TransFix";
-        public static string ModName { get { return modName; } }
-
         protected GameObject gameObject;
 
         public ModInitializer()
         {
-            Log.Message("Initialized the TransFix mod");
+            Log.Message(String.Format("Initialized the TransFix mod {0}.", Assembly.GetExecutingAssembly().GetName().Version.ToString()));
             this.gameObject = PrepareMod();
 
         }
@@ -48,75 +45,21 @@ namespace TransFix
         {
             //Log.Message("FillTab");
         }
-
-        #region IDisposable Members
-
-        /// <summary>
-        /// Internal variable which checks if Dispose has already been called
-        /// </summary>
-        private Boolean disposed;
-
-        /// <summary>
-        /// Releases unmanaged and - optionally - managed resources
-        /// </summary>
-        /// <param name="disposing"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
-        protected virtual void Dispose(Boolean disposing)
-        {
-            Log.Message("Dispose: " + disposing);
-            if (disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                //TODO: Managed cleanup code here, while managed refs still valid
-            }
-            //TODO: Unmanaged cleanup code here
-
-            disposed = true;
-        }
-
-        /// <summary>
-        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
-        /// </summary>
-        public void Dispose()
-        {
-            // Call the private Dispose(bool) helper and indicate 
-            // that we are explicitly disposing
-            this.Dispose(true);
-
-            // Tell the garbage collector that the object doesn't require any
-            // cleanup when collected since Dispose was called explicitly.
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// The destructor for the class.
-        /// </summary>
-        ~ModInitializer()
-        {
-            this.Dispose(false);
-        }
-
-
-        #endregion
-        
     }
     
     internal class ModController : MonoBehaviour
     {
-        private readonly string ModName = ModInitializer.ModName;
+        private const string MOD_NAME = "TransFix";
         private LoadedLanguage oldLang;
 
         private bool IsModEnabled()
         {
-            return LoadedModManager.LoadedMods.Any(m => ModName.Equals(m.name));
+            return LoadedModManager.LoadedMods.Any(m => MOD_NAME.Equals(m.name));
         }
 
         public void OnLevelWasLoaded(int level)
         {
-            Log.Message("OnLevelWasLoaded: " + level);
+            //Log.Message("OnLevelWasLoaded: " + level);
             if (level == 0)
             {
                 //this.gameplay = false;
@@ -138,7 +81,6 @@ namespace TransFix
                                 oldLang = newLang;
                                 Log.Message("Fixing trans...");
                                 FixTransLocked();
-                                Log.Message("Trans fixed.");
                             }
                         }
                     }
@@ -152,18 +94,19 @@ namespace TransFix
 
         public virtual void Start()
         {
-            Log.Message("Start: " + enabled);
+            //Log.Message("Start: " + enabled);
             base.enabled = false;
         }
 
         public virtual void Update()
         {
-            Log.Message("Update: " + enabled);
+            //Log.Message("Update: " + enabled);
             base.enabled = false;
         }
 
         private void FixTransLocked()
         {
+            long start = DateTime.UtcNow.Ticks;
             int count = 0;
             foreach (var def in DefDatabase<ThingDef>.AllDefs)
             {
@@ -184,7 +127,9 @@ namespace TransFix
                         var meat = race.meatDef;
                         if (meat != null)
                         {
-                            if (!IsTranslated<ThingDef>(def.defName + "_Meat.label"))
+                            //NOTE: some pawns use Metal as meat of them!!!!
+                            //Log.Message("" + def.defName + "->" + meat.defName);
+                            if (!IsTranslated<ThingDef>(meat.defName + ".label"))
                             {
                                 if (IsTranslated<ThingDef>(def.defName + ".race.meatLabel"))
                                 {
@@ -196,7 +141,7 @@ namespace TransFix
                                 }
                                 ++count;
                             }
-                            if (!IsTranslated<ThingDef>(def.defName + "_Meat.description"))
+                            if (!IsTranslated<ThingDef>(meat.defName + ".description"))
                             {
                                 meat.description = "MeatDesc".Translate(labels);
                                 ++count;
@@ -206,7 +151,8 @@ namespace TransFix
                         var leather = race.leatherDef;
                         if (leather != null)
                         {
-                            if (!IsTranslated<ThingDef>(def.defName + "_Leather.label"))
+                            //Log.Message("" + def.defName + "->" + leather.defName);
+                            if (!IsTranslated<ThingDef>(leather.defName + ".label"))
                             {
                                 if (IsTranslated<ThingDef>(def.defName + ".race.leatherLabel"))
                                 {
@@ -218,7 +164,7 @@ namespace TransFix
                                 }
                                 ++count;
                             }
-                            if (!IsTranslated<ThingDef>(def.defName + "_Leather.description"))
+                            if (!IsTranslated<ThingDef>(leather.defName + ".description"))
                             {
                                 leather.description = "LeatherDesc".Translate(labels);
                                 ++count;
@@ -228,14 +174,15 @@ namespace TransFix
                         var corpse = race.corpseDef;
                         if (corpse != null)
                         {
-                            if (!IsTranslated<ThingDef>(def.defName + "_Corpse.label"))
+                            if (!IsTranslated<ThingDef>(corpse.defName + ".label"))
                             {
                                 corpse.label = "CorpseLabel".Translate(labels);
                                 ++count;
                             }
-                            if (!IsTranslated<ThingDef>(def.defName + "_Corpse.description"))
+                            if (!IsTranslated<ThingDef>(corpse.defName + ".description"))
                             {
                                 corpse.description = "CorpseDesc".Translate(labels);
+                                ++count;
                             }
                         }
                     }
@@ -249,17 +196,20 @@ namespace TransFix
                         var seed = plant.seedDef;
                         if (seed != null)
                         {
-                            if (!IsTranslated<ThingDef>(def.defName + "_Seed.label"))
+                            if (!IsTranslated<ThingDef>(seed.defName + ".label"))
                             {
                                 seed.label = "SeedLabel".Translate(new object[] { def.label });
                                 ++count;
                             }
                             //NO SeedDesc
-#if false
-                            if (IsTranslated("SeedDesc"))
+#if true
+                            if (!IsTranslated<ThingDef>(seed.defName + ".description"))
                             {
-                                seed.description = "SeedDesc".Translate(new object[] { def.label });
-                                ++count;
+                                if (IsTranslated("SeedDesc"))
+                                {
+                                    seed.description = "SeedDesc".Translate(new object[] { def.label });
+                                    ++count;
+                                }
                             }
 #endif
                         }
@@ -282,12 +232,14 @@ namespace TransFix
                     def.descriptionDiscovered = def.description;
                 }
             }
-            if (count > 0)
-            {
-                //再次覆盖(注意这里以最新的activeLanguage为准, 前面是没办法)
-                LanguageDatabase.activeLanguage.InjectIntoDefs();
-            }
-            Log.Message("Fix " + count + " trans.");
+
+            //needn't with IsTranslated
+            //if (count > 0)
+            //{
+            //    //再次覆盖(注意这里以最新的activeLanguage为准, 前面是没办法)
+            //    LanguageDatabase.activeLanguage.InjectIntoDefs();
+            //}
+            Log.Message(String.Format("{0} trans fixed. ({1}ms)", count, ((double)(DateTime.UtcNow.Ticks - start)) / TimeSpan.TicksPerMillisecond));
         }
 
         /// <summary>
