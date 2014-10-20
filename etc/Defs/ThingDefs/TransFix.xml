@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ThingDefs>
+	<ThingDef>
+		<defName>TransFix</defName>
+		<category>Building</category>
+		<eType>BuildingComplex</eType>
+		<menuHidden>true</menuHidden>
+		<label>TransFix_Initializer</label>
+		<thingClass>TransFix.ModInitializer</thingClass>
+		<inspectorTabs>
+			<li>TransFix.ModInitializer</li>
+		</inspectorTabs>
+	</ThingDef>
+</ThingDefs>
