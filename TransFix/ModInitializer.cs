@@ -52,6 +52,8 @@ namespace TransFix
     {
         private const string MOD_NAME = "TransFix";
         private LoadedLanguage oldLang;
+        protected RootMap replacementRootMap;
+        private bool replaceMap = true;
 
         private bool IsModEnabled()
         {
@@ -60,18 +62,18 @@ namespace TransFix
 
         public void OnLevelWasLoaded(int level)
         {
-            //Log.Message("OnLevelWasLoaded: " + level);
-            if (level == 0)
+            Log.Message("OnLevelWasLoaded: " + level);
+            if (this.IsModEnabled())
             {
-                //this.gameplay = false;
-                //base.enabled = true;
-                //base.enabled = false;
-            }
-            else if (level == 1)
-            {
-                //base.enabled = true;
-                if (this.IsModEnabled())
+                if (level == 0)
                 {
+                    //this.gameplay = false;
+                    //base.enabled = true;
+                    //base.enabled = false;
+                }
+                else if (level == 1)
+                {
+                    //base.enabled = true;
                     if (oldLang != LanguageDatabase.activeLanguage)
                     {
                         lock (this)
@@ -92,23 +94,47 @@ namespace TransFix
                             }
                         }
                     }
+
+                    //Replace RootMap
+                    if (replaceMap)
+                    {
+                        try
+                        {
+                            VerseBase.RootMap component = GameObject.Find("GameCoreDummy").GetComponent<VerseBase.RootMap>();
+                            if (!component.GetType().Equals(typeof(RootMap)))//typeof(VerseBase.RootMap)
+                            {
+                                component.enabled = false;
+                                UnityEngine.Object.DestroyImmediate(component);
+                                this.replacementRootMap = GameObject.Find("GameCoreDummy").AddComponent<RootMap>();
+                                Log.Message("Replace original RootMap with TransFix Interface RootMap, it seems that Edb don't use this.");
+                            }
+                        }
+                        catch (Exception exception)
+                        {
+                            this.replaceMap = false;
+                            Log.Error("Failed to start the game with the TransFix Interface mod");
+                            Log.Error(exception.ToString());
+                            Log.Notify_Exception(exception);
+                            //throw;
+                        }
+                    }
                 }
-            }
-            else
-            {
-                //base.enabled = false;
+                else
+                {
+                    //base.enabled = false;
+                }
             }
         }
 
         public virtual void Start()
         {
-            //Log.Message("Start: " + enabled);
+            Log.Message("Start: " + enabled);
             base.enabled = false;
         }
 
         public virtual void Update()
         {
-            //Log.Message("Update: " + enabled);
+            Log.Message("Update: " + enabled);
             base.enabled = false;
         }
 
