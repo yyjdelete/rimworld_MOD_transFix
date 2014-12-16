@@ -266,7 +266,8 @@ namespace TransFix
                     if (target == null)
                     {
                         Log.Warning("Use default");
-                        target = (T)Activator.CreateInstance(typeof(T), ctorArgs);
+                        target = (T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeof(T)) : Activator.CreateInstance(typeof(T), ctorArgs));
+                        //target = (T)Activator.CreateInstance(typeof(T), ctorArgs);
                     }
                 }
             }
@@ -338,7 +339,10 @@ namespace TransFix
         public static readonly HashSet<Assembly> newMods = new HashSet<Assembly>();
 		private static readonly Func<ResearchManager, Dictionary<ResearchProjectDef, float>> getProgress;
 		private static readonly Func<MapFileCompressor, string> getCompressedString;
-		private static readonly Func<Faction, List<FactionRelation>> getRelations;
+        private static readonly Func<Faction, List<FactionRelation>> getRelations;
+
+        private static readonly HashSet<Assembly> modCache = new HashSet<Assembly>();
+        private static readonly Dictionary<string, Type> typeCache = new Dictionary<string, Type>();
 
         static Scribe_Fix()
         {
@@ -378,15 +382,15 @@ namespace TransFix
                 XmlAttribute attribute2 = subNode.Attributes["Class"];
                 if (attribute2 != null)
                 {
-                    typeInAnyAssembly = GenTypes.GetTypeInAnyAssembly(attribute2.Value);
+                    typeInAnyAssembly = Scribe_Fix.GetTypeFast(attribute2.Value);
                     if (typeInAnyAssembly == null)
                     {
                         Log.Warning(attribute2.Value + " is not found.");
                         var element = subNode["def"];
                         if (element != null)
                         {
-                            Log.Warning("x" + element.InnerText);
-                            Log.Warning("x" + element.Value);
+                            //Log.Warning("x" + element.InnerText);
+                            //Log.Warning("x" + element.Value);
                             ThingDef def = DefDatabase<ThingDef>.GetNamedSilentFail(element.InnerText);
                             if (def != null)
                             {
@@ -400,12 +404,14 @@ namespace TransFix
                 {
                     typeInAnyAssembly = typeof(T);
                 }
+                //Can not make raw things
+                //typeInAnyAssembly = typeInAnyAssembly ?? typeof(T);
                 if (typeInAnyAssembly == null)
                 {
                     throw new ArgumentNullException("classType");
                 }
 
-                T local2 = (T)Activator.CreateInstance(typeInAnyAssembly, ctorArgs);
+                T local2 = (T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeInAnyAssembly) : Activator.CreateInstance(typeInAnyAssembly, ctorArgs));
                 XmlNode curParent = Scribe.curParent;
                 Scribe.curParent = subNode;
                 //不能随意条件此元素的位置, 对ExposeData中引用了LookMode.TargetPack或者LookReference的情况, 最终解析顺序必须和原始队列完全一致
@@ -452,18 +458,18 @@ namespace TransFix
         {
             //Fix faction
             var facts = fm.AllFactionsListForReading;
-            Log.Message("OLD");
-            foreach (Faction cur in facts)
-            {
-                Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
-            }
+            //Log.Message("OLD");
+            //foreach (Faction cur in facts)
+            //{
+            //    Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
+            //}
             int count = facts.RemoveAll(fact => fact == null || fact.def == null);
-            Log.Message("REMOVED");
-            foreach (Faction faction2 in facts)
-            {
-                Log.Message(string.Format("{0}[{1}]", faction2.GetUniqueLoadID(), faction2.def.label));
-            }
-            Log.Message("NEW");
+            //Log.Message("REMOVED");
+            //foreach (Faction cur in facts)
+            //{
+            //    Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
+            //}
+            //Log.Message("NEW");
             IEnumerable<Faction> newFacts = FactionGenerator.GenerateFactionsForNewWorld();
             foreach (Faction cur in newFacts)
             {
@@ -477,17 +483,17 @@ namespace TransFix
                     //先注释掉, 解析的时候会解析到别的东西上
                     //LoadCrossRefHandler.RegisterLoadedSaveable(cur);
                 }
-                Log.Message(string.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
+                //Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
             }
-            Log.Message("FINAL");
+            //Log.Message("FINAL");
 
             //NOTE: 由于FactionRelation的ExposeDate涉及到other的引用, 在ResolveAllCrossReferences之前未解析, 任何对LoadCrossRefHandler的变动会导致其执行顺序改变出错
             //Remove useless Relations
             foreach (Faction cur in facts)
             {
-                Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
+                //Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
                 var relations = getRelations(cur);
-                for (int i = relations.Count - 1; i >= 0; i--)
+                for (int i = relations.Count - 1; i >= 0; --i)
                 {
                     FactionRelation curRat = relations[i];
                     if ((curRat.other == null) || !facts.Contains(curRat.other))
@@ -496,7 +502,11 @@ namespace TransFix
                         //注意为null的情况
                         if (curRat.other != null)
                         {
-                            Log.Message(string.Format("remove {0}[{1}]->{2}[{3}]", new object[] { cur.GetUniqueLoadID(), cur.def.label, curRat.other.GetUniqueLoadID(), curRat.other.def.label }));
+                            Log.Message(String.Format("remove {0}[{1}]->{2}[{3}]", cur.GetUniqueLoadID(), cur.def.label, curRat.other.GetUniqueLoadID(), curRat.other.def.label));
+                        }
+                        else
+                        {
+                            Log.Message(String.Format("remove {0}[{1}]->unknown", cur.GetUniqueLoadID(), cur.def.label));
                         }
                     }
                 }
@@ -689,6 +699,58 @@ namespace TransFix
             }
             DeepProfiler.End("init");
             yield break;
+        }
+        private static Type GetTypeFast(string name)
+        {
+            Type type;
+            if (name == null)
+            {
+                type = null;
+            }
+            else
+            {
+                if (!Scribe_Fix.typeCache.TryGetValue(name, out type))
+                {
+                    type = GenTypes.GetTypeInAnyAssembly(name);
+                    Scribe_Fix.typeCache[name] = type;
+                    if (type != null)
+                    {
+                        Scribe_Fix.modCache.Add(type.Assembly);
+                    }
+                }
+            }
+            return type;
+        }
+        public static void Clean()
+        {
+            Scribe_Fix.typeCache.Clear();
+            Scribe_Fix.modCache.Clear();
+        }
+        public static void CheckMapGen()
+        {
+            try
+            {
+                MapGeneratorDef random = DefDatabase<MapGeneratorDef>.GetRandom();
+                if (random != null)
+                {
+                    bool flag = false;
+                    foreach (Genstep current in random.gensteps)
+                    {
+                        if (!Scribe_Fix.modCache.Contains(current.GetType().Assembly))
+                        {
+                            current.Generate();
+                            flag = true;
+                        }
+                    }
+                    if (flag)
+                    {
+                        Log.Message("The world is changing all the time, I will give you some things.");
+                    }
+                }
+            }
+            catch
+            {
+            }
         }
 
 

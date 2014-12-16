@@ -112,10 +112,7 @@ namespace TransFix
             {
                 try
                 {
-                    if (thing != null)
-                    {
-                        GenSpawn.Spawn(thing, thing.Position, thing.Rotation);
-                    }
+                    GenSpawn.Spawn(thing, thing.Position, thing.Rotation);
                 }
                 catch (Exception exception)
                 {
@@ -123,6 +120,7 @@ namespace TransFix
                 }
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used after spawn");
+            Scribe_Fix.CheckMapGen();
             MapIniterUtility.FinalizeMapInit();
             if (!Application.isEditor && (VersionControl.BuildFromVersionString(MapInitData.loadedVersion) != VersionControl.BuildFromVersionString(VersionControl.versionStringFull)))
             {
@@ -132,6 +130,7 @@ namespace TransFix
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used.");
             Resources.UnloadUnusedAssets();
+            Scribe_Fix.Clean();
             GC.Collect();
             sw.Stop();
             Log.Message(sw.ElapsedMilliseconds + "ms used.");//3957ms used.
