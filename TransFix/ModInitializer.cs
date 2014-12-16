@@ -106,17 +106,18 @@ namespace TransFix
                                 component.enabled = false;
                                 UnityEngine.Object.DestroyImmediate(component);
                                 this.replacementRootMap = GameObject.Find("GameCoreDummy").AddComponent<RootMap>();
-                                Log.Message("Replace original RootMap with TransFix Interface RootMap, it seems that Edb don't use this.");
+                                Log.Message("Replace original RootMap with TransFix RootMap, it seems that Edb don't care this.");
                             }
                         }
                         catch (Exception exception)
                         {
                             this.replaceMap = false;
-                            Log.Error("Failed to start the game with the TransFix Interface mod");
+                            Log.Error("Failed to start the game with the TransFix mod");
                             Log.Error(exception.ToString());
                             Log.Notify_Exception(exception);
                             //throw;
                         }
+                        base.enabled = true;
                     }
                 }
                 else
