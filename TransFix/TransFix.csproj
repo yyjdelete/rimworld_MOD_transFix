@@ -9,9 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>TransFix</RootNamespace>
     <AssemblyName>TransFix</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -29,12 +30,16 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Extends\FactionManagerEx.cs" />
     <Compile Include="Extends\MapConditionManagerEx.cs" />
+    <Compile Include="Extends\MapDrawerEx.cs" />
     <Compile Include="Extends\MapFileCompressorEx.cs" />
     <Compile Include="Extends\MapInfoEx.cs" />
+    <Compile Include="Extends\MapIniterUtilityEx.cs" />
     <Compile Include="Extends\ResearchManagerEx.cs" />
     <Compile Include="Extends\TerrainGridEx.cs" />
     <Compile Include="Extends\WorldEx.cs" />
@@ -42,6 +47,7 @@
     <Compile Include="LoadCrossRefHandlerEx.cs" />
     <Compile Include="MapIniter_LoadFromFile.cs" />
     <Compile Include="ModInitializer.cs" />
+    <Compile Include="ModUtils.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RootMap.cs" />
     <Compile Include="Scribe_Fix.cs" />

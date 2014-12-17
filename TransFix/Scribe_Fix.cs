@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml;
 using TransFix.Extends;
@@ -336,10 +337,7 @@ namespace TransFix
         }
 #endif
         private static readonly Dictionary<Type, Action<Saveable>> exposeDataOveride = new Dictionary<Type, Action<Saveable>>();
-        public static readonly HashSet<Assembly> newMods = new HashSet<Assembly>();
 
-        private static readonly HashSet<Assembly> modCache = new HashSet<Assembly>();
-        private static readonly Dictionary<string, Type> typeCache = new Dictionary<string, Type>();
 
         static Scribe_Fix()
         {
@@ -375,7 +373,7 @@ namespace TransFix
                 XmlAttribute attribute2 = subNode.Attributes["Class"];
                 if (attribute2 != null)
                 {
-                    typeInAnyAssembly = Scribe_Fix.GetTypeFast(attribute2.Value);
+                    typeInAnyAssembly = ModUtils.GetTypeFast(attribute2.Value);
                     if (typeInAnyAssembly == null)
                     {
                         Log.Warning(attribute2.Value + " is not found.");
@@ -446,19 +444,25 @@ namespace TransFix
             }
             return local;
         }
-
+        public static HashSet<Assembly> newMods = new HashSet<Assembly>();
 
         public static void Fix(this IEnumerable<Thing> pawnContainer)
         {
+            //Log.Message("611");
             //Fix Pawn.story.hairDef
             foreach (Thing thing in pawnContainer)
             {
+                //Log.Message("615");
                 Pawn cur = thing as Pawn;
                 if (cur != null)
                 {
+                    //Log.Message("619");
                     //hair
+                    //Log.Message(cur.Nickname);
+                    //Log.Message("622" + cur.story);
                     if (cur.story != null && cur.story.hairDef == null)
                     {
+                        //Log.Message("625");
                         cur.story.hairDef = PawnHairChooser.RandomHairDefFor(cur, cur.Faction.def);
                         Log.Message("Add hair for " + cur.Nickname);
                     }
@@ -470,88 +474,6 @@ namespace TransFix
                 }
             }
         }
-
-
-
-         private static Type GetTypeFast(string name)
-        {
-            Type type;
-            if (name == null)
-            {
-                type = null;
-            }
-            else
-            {
-                if (!Scribe_Fix.typeCache.TryGetValue(name, out type))
-                {
-                    type = GenTypes.GetTypeInAnyAssembly(name);
-                    Scribe_Fix.typeCache[name] = type;
-                    if (type != null)
-                    {
-                        Scribe_Fix.modCache.Add(type.Assembly);
-                    }
-                }
-            }
-            return type;
-        }
-        public static void Clean()
-        {
-            Scribe_Fix.typeCache.Clear();
-            Scribe_Fix.modCache.Clear();
-        }
-
-        public static void CheckMapGen()
-        {
-
-            //var oilDepositDef = DefDatabase<ThingDef>.GetNamedSilentFail("OilDeposit");
-            //if (oilDepositDef != null &&
-            //    !Find.ListerThings.ThingsOfDef(oilDepositDef).Any())//!TTM_GameStartSpawns for still loading
-            //{
-            //}
-            try
-            {
-                var defaultGen = DefDatabase<MapGeneratorDef>.GetRandom();
-                if (defaultGen != null)
-                {
-                    bool found = false;
-                    //hack: TTMCustomEvents.Initializer init for TTMa7 while they are not the same
-                    Type ttmceInit = GenTypes.GetTypeInAnyAssembly("TTMCustomEvents.Initializer");
-                    foreach (var cur in defaultGen.gensteps)
-                    {
-                        var curType = cur.GetType();
-                        if (!modCache.Contains(cur.GetType().Assembly))
-                        {
-                            bool gen = true;
-                            if (curType == ttmceInit)
-                            {
-                                ThingDef oilDef = DefDatabase<ThingDef>.GetNamedSilentFail("OilDeposit");
-                                if (oilDef != null)
-                                {
-                                    Type oilClass = oilDef.thingClass;
-                                    if (oilClass != null)
-                                    {
-                                        gen = !modCache.Contains(oilClass.Assembly);
-                                    }
-                                    else
-                                    {
-                                        gen = !Find.ListerThings.ThingsOfDef(oilDef).Any();
-                                    }
-                                }
-                            }
-                            if (gen)
-                            {
-                                cur.Generate();
-                                found = true;
-                            }
-                        }
-                    }
-                    if (found)
-                        Log.Message("The world is changing all the time, I will give you some things.");
-                }
-            }
-            catch { }
-        }
-
 
     }
 }
