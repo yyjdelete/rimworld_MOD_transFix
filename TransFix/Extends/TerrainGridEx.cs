@@ -40,8 +40,8 @@ namespace TransFix.Extends
                         }
                         else
                         {
-                            Log.Warning("Not found, Use " + def2.label + def2.shortHash.ToString() + "instead.");
                             def2 = sand;//can not be null
+                            Log.Warning("Not found, Use " + def2.label + def2.shortHash.ToString() + "instead.");
                         }
                         dictionary[cur.val] = def2;
                     }
