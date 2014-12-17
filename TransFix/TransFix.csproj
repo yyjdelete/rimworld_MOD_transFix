@@ -11,7 +11,7 @@
     <AssemblyName>TransFix</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>Unity Full v3.5</TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -35,6 +35,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Extends\DefDatabaseEx.cs" />
+    <Compile Include="Extends\DefEx.cs" />
     <Compile Include="Extends\FactionManagerEx.cs" />
     <Compile Include="Extends\MapConditionManagerEx.cs" />
     <Compile Include="Extends\MapDrawerEx.cs" />

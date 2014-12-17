@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using TransFix.Extends;
 using UnityEngine;
 using Verse;
 using VerseBase;
@@ -425,6 +426,12 @@ namespace TransFix
                     //}
 
                 }
+            }
+
+            foreach (var def in DefDatabase<DesignationCategoryDef>.AllDefs)
+            {
+                def.ClearLabelCapCache();
+                //Log.Warning(def.defName + "->" + def.LabelCap + "/" + def.label);
             }
 
             //needn't with IsTranslated
