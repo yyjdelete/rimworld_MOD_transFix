@@ -68,27 +68,27 @@ namespace TransFix
                         {
                             T local2 = local;
                             T defaultValue = default(T);
-                            Scribe_Values.LookValue<T>(ref local2, XmlToItem.ListItemName, defaultValue, true);
+                            Scribe_Values.LookValue<T>(ref local2, XmlToObject.ListItemName, defaultValue, true);
                         }
                         else if (lookMode == LookMode.TargetPack)
                         {
                             TargetPack pack = (TargetPack)(System.Object)local;
-                            Scribe_TargetPack.LookTargetPack(ref pack, XmlToItem.ListItemName);
+                            Scribe_TargetPack.LookTargetPack(ref pack, XmlToObject.ListItemName);
                         }
                         else if (lookMode == LookMode.DefReference)
                         {
                             Def def = (Def)(System.Object)local;
-                            Scribe_Defs.LookDef<Def>(ref def, XmlToItem.ListItemName);
+                            Scribe_Defs.LookDef<Def>(ref def, XmlToObject.ListItemName);
                         }
                         else if (lookMode == LookMode.Deep)
                         {
                             Saveable target = (Saveable)local;
-                            Scribe_Deep.LookDeep<Saveable>(ref target, XmlToItem.ListItemName, ctorArgs);
+                            Scribe_Deep.LookDeep<Saveable>(ref target, XmlToObject.ListItemName, ctorArgs);
                         }
                         else if (lookMode == LookMode.MapReference)
                         {
                             LoadReferenceable refee = (LoadReferenceable)local;
-                            Scribe_References.LookReference<LoadReferenceable>(ref refee, XmlToItem.ListItemName);
+                            Scribe_References.LookReference<LoadReferenceable>(ref refee, XmlToObject.ListItemName);
                         }
                     }
                 }
@@ -219,14 +219,14 @@ namespace TransFix
                     {
                         Thing thing = LoadCrossRefHandler.NextResolvedRef<Thing>();
                         TargetPack pack3 = (TargetPack)(System.Object)list[i];
-                        IntVec3 loc = pack3.Loc;
+                        IntVec3 cell = pack3.Cell;
                         if (thing != null)
                         {
                             list[i] = (T)(System.Object)new TargetPack(thing);
                         }
                         else
                         {
-                            list[i] = (T)(System.Object)new TargetPack(loc);
+                            list[i] = (T)(System.Object)new TargetPack(cell);
                         }
                     }
                 }

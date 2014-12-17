@@ -47,6 +47,8 @@ namespace TransFix
             //    !Find.ListerThings.ThingsOfDef(oilDepositDef).Any())//!TTM_GameStartSpawns for still loading
             //{
             //}
+            //FIXME: MapGeneratorDef is removed, how to got it??
+#if A6
             try
             {
                 var defaultGen = DefDatabase<MapGeneratorDef>.GetRandom();
@@ -89,6 +91,7 @@ namespace TransFix
                 }
             }
             catch { }
+#endif
         }
 
         public static void CheckMapComponent(this Map map)

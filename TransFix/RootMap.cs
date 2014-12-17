@@ -26,15 +26,16 @@ namespace TransFix
                 PlayDataLoader.LoadAllPlayData();
             }
             Find.ResetBaseReferences();
+            ActiveLessonManager.CloseAll();
             base.realTime = new RealTime();
             base.soundRoot = new SoundRoot();
             if (Application.loadedLevelName == "Gameplay")
             {
-                base.uiRoot = new RimWorld.UIMapRoot();
+                base.uiRoot = new RimWorld.UIRoot_Map();
             }
             else if (Application.loadedLevelName == "Entry")
             {
-                base.uiRoot = new UIEntryRoot();
+                base.uiRoot = new UIRoot_Entry();
             }
             if (MapInitData.mapToLoad.NullOrEmpty())
             {

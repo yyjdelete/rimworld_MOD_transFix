@@ -299,11 +299,11 @@ namespace TransFix
                 {
                     //def.IsStuff == (def.stuffProps != null)
                     var stuffProps = def.stuffProps;
-                    if (stuffProps.nameAsStuff != null)
+                    if (stuffProps.stuffAdjective != null)
                     {
                         if (!IsTranslated<ThingDef>(def.defName + ".stuffProps.nameAsStuff"))
                         {
-                            stuffProps.nameAsStuff = null;
+                            stuffProps.stuffAdjective = null;
                             ++count;
                         }
                     }

@@ -80,7 +80,7 @@ namespace TransFix.Extends
                     if (def != null)
                     {
                         var th = ThingMaker.MakeThing(def, null);
-                        th.SetPositionDirect(gridThing.pos);
+                        th.SetPositionDirect(gridThing.cell);
                         yield return th;
                     }
                 }

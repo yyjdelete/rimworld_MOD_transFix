@@ -29,7 +29,7 @@ namespace TransFix.Extends
                     TerrainDef def2 = null;
                     if (!(dictionary.TryGetValue(cur.val, out def2) && def2 != null))
                     {
-                        Log.Error("Did not find terrain def with short hash " + cur.val.ToString() + " for square " + cur.pos.ToString() + ".");
+                        Log.Error("Did not find terrain def with short hash " + cur.val.ToString() + " for square " + cur.cell.ToString() + ".");
                         if (dictionary.TryGetValue((ushort)(cur.val - 1), out def2) && def2 != null)
                         {
                             Log.Warning("Try another hash, found " + def2.label + def2.shortHash.ToString());
@@ -45,7 +45,7 @@ namespace TransFix.Extends
                         }
                         dictionary[cur.val] = def2;
                     }
-                    tg.grid[CellIndices.CellToIndex(cur.pos)] = def2;
+                    tg.grid[CellIndices.CellToIndex(cur.cell)] = def2;
                 }
             }
         }

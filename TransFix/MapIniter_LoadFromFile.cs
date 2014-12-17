@@ -30,16 +30,20 @@ namespace TransFix
             Scribe_Deep.LookDeep<DesignationManager>(ref map.designationManager, "designationManager");
             Scribe_Deep.LookDeep<BrainManager>(ref map.aiSquadBrainManager, "aiKingManager");
             Scribe_Deep.LookDeep<PassingShipManager>(ref map.passingShipManager, "visitorManager");
-            Scribe_Deep.LookDeep<TutorNoteManager>(ref map.tutorNoteManager, "tutorNoteManager");
-            Scribe_Deep.LookDeep<ConceptTracker>(ref map.conceptTracker, "conceptTracker");
+            //Scribe_Deep.LookDeep<TutorNoteManager>(ref map.tutorNoteManager, "tutorNoteManager");
+            //Scribe_Deep.LookDeep<ConceptTracker>(ref map.conceptTracker, "conceptTracker");
             Scribe_Fix.LookDeepNotNull<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager");//Fix while zombie use it
             Scribe_Deep.LookDeep<FogGrid>(ref map.fogGrid, "fogGrid");
             Scribe_Deep.LookDeep<RoofGrid>(ref map.roofGrid, "roofGrid");
             Scribe_Fix.LookDeepNotNull<TerrainGrid>(ref map.terrainGrid, "terrainGrid", null);//Try rehash before set sand
             Scribe_Deep.LookDeep<BoolGrid>(ref map.homeRegionGrid, "homeRegionGrid", MapChangeType.HomeRegion);
             Scribe_Deep.LookDeep<BoolGrid>(ref map.noRoofRegionGrid, "noRoofRegionGrid", MapChangeType.NoRoofRegion);
-            Scribe_Deep.LookDeep<ZoneManager>(ref map.zoneManager, "zoneManager");
+            Scribe_Fix.LookDeepNotNull<BoolGrid>(ref map.snowClearRegionGrid, "snowClearRegionGrid", MapChangeType.SnowClearRegion);
+            //FIXME: Zone的cells由squares改为了cells
+            Scribe_Fix.LookDeepNotNull<ZoneManager>(ref map.zoneManager, "zoneManager", null);
             Scribe_Deep.LookDeep<History>(ref map.history, "history");
+            Scribe_Fix.LookDeepNotNull<TemperatureCache>(ref map.temperatureCache, "temperatureGrid", null);
+            Scribe_Fix.LookDeepNotNull<SnowGrid>(ref map.snowGrid, "snowGrid", null);
             Scribe_Fix.LookListNotNull<MapComponent>(ref map.components, "components", LookMode.Deep, null);
 
             map.CheckMapComponent();
