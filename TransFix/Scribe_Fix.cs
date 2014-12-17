@@ -2,9 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml;
+using TransFix.Extends;
 using UnityEngine;
 using Verse;
 
@@ -337,30 +337,23 @@ namespace TransFix
 #endif
         private static readonly Dictionary<Type, Action<Saveable>> exposeDataOveride = new Dictionary<Type, Action<Saveable>>();
         public static readonly HashSet<Assembly> newMods = new HashSet<Assembly>();
-		private static readonly Func<ResearchManager, Dictionary<ResearchProjectDef, float>> getProgress;
-		private static readonly Func<MapFileCompressor, string> getCompressedString;
-        private static readonly Func<Faction, List<FactionRelation>> getRelations;
 
         private static readonly HashSet<Assembly> modCache = new HashSet<Assembly>();
         private static readonly Dictionary<string, Type> typeCache = new Dictionary<string, Type>();
 
         static Scribe_Fix()
         {
-            ParameterExpression expression;
-            Scribe_Fix.getProgress = Expression.Lambda<Func<ResearchManager, Dictionary<ResearchProjectDef, float>>>(Expression.Field(expression = Expression.Parameter(typeof(ResearchManager), "rm"), "progress"), new ParameterExpression[]
-	        {
-		        expression
-	        }).Compile();
-            Scribe_Fix.getCompressedString = Expression.Lambda<Func<MapFileCompressor, string>>(Expression.Field(expression = Expression.Parameter(typeof(MapFileCompressor), "mfc"), "compressedString"), new ParameterExpression[]
-	        {
-		        expression
-	        }).Compile();
-            Scribe_Fix.getRelations = Expression.Lambda<Func<Faction, List<FactionRelation>>>(Expression.Field(expression = Expression.Parameter(typeof(Faction), "f"), "relations"), new ParameterExpression[]
-	        {
-		        expression
-	        }).Compile();
-            Scribe_Fix.exposeDataOveride.Add(typeof(ResearchManager), new Action<Saveable>(Scribe_Fix.ExposeData4ResearchManager));
-            Scribe_Fix.exposeDataOveride.Add(typeof(TerrainGrid), new Action<Saveable>(Scribe_Fix.ExposeData4TerrainGrid));
+            //BindingFlags bindFlag = BindingFlags.Instance | 
+            //    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
+            //var progressInfo = typeof(ResearchManager).GetField("progress", bindFlag);
+
+            //faster than reflection
+
+
+            exposeDataOveride.Add(typeof(ResearchManager), (saveable) => ((ResearchManager)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(MapConditionManager), (saveable) => ((MapConditionManager)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(MapInfo), (saveable) => ((MapInfo)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(TerrainGrid), (saveable) => ((TerrainGrid)saveable).ExposeDataEx());
         }
 
         public static T SaveableFromNode<T>(XmlNode subNode, object[] ctorArgs)
@@ -454,75 +447,6 @@ namespace TransFix
             return local;
         }
 
-        public static void Fix(this FactionManager fm)
-        {
-            //Fix faction
-            var facts = fm.AllFactionsListForReading;
-            //Log.Message("OLD");
-            //foreach (Faction cur in facts)
-            //{
-            //    Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
-            //}
-            int count = facts.RemoveAll(fact => fact == null || fact.def == null);
-            //Log.Message("REMOVED");
-            //foreach (Faction cur in facts)
-            //{
-            //    Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
-            //}
-            //Log.Message("NEW");
-            IEnumerable<Faction> newFacts = FactionGenerator.GenerateFactionsForNewWorld();
-            foreach (Faction cur in newFacts)
-            {
-                if (!facts.Any(fact => fact.def == cur.def))
-                {
-                    Log.Message("Add missing faction: " + cur.GetUniqueLoadID() + "[" + cur.def.label + "]");
-                    //fm.Add(cur);
-                    facts.Add(cur);
-                    Scribe_Fix.newMods.Add(cur.GetType().Assembly);
-                    ++count;
-                    //先注释掉, 解析的时候会解析到别的东西上
-                    //LoadCrossRefHandler.RegisterLoadedSaveable(cur);
-                }
-                //Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
-            }
-            //Log.Message("FINAL");
-
-            //NOTE: 由于FactionRelation的ExposeDate涉及到other的引用, 在ResolveAllCrossReferences之前未解析, 任何对LoadCrossRefHandler的变动会导致其执行顺序改变出错
-            //Remove useless Relations
-            foreach (Faction cur in facts)
-            {
-                //Log.Message(String.Format("{0}[{1}]", cur.GetUniqueLoadID(), cur.def.label));
-                var relations = getRelations(cur);
-                for (int i = relations.Count - 1; i >= 0; --i)
-                {
-                    FactionRelation curRat = relations[i];
-                    if ((curRat.other == null) || !facts.Contains(curRat.other))
-                    {
-                        relations.RemoveAt(i);
-                        //注意为null的情况
-                        if (curRat.other != null)
-                        {
-                            Log.Message(String.Format("remove {0}[{1}]->{2}[{3}]", cur.GetUniqueLoadID(), cur.def.label, curRat.other.GetUniqueLoadID(), curRat.other.def.label));
-                        }
-                        else
-                        {
-                            Log.Message(String.Format("remove {0}[{1}]->unknown", cur.GetUniqueLoadID(), cur.def.label));
-                        }
-                    }
-                }
-                //按理说GenerateFactionsForNewWorld会在yield之前和已添加到地图中的势力建立关系, 但
-                //可能在Scribe_Collections.LookList<Faction>(ref this.allFactions, "allFactions", LookMode.Deep, null);时直接就崩溃了, 
-                //没有留下记录, 这会造成后续的原势力关系为空, 无法继续
-                foreach (Faction other in facts)
-                {
-                    if (other != cur)
-                    {
-                        cur.TryMakeInitialRelationsWith(other);
-                    }
-                }
-            }
-        }
-
 
         public static void Fix(this IEnumerable<Thing> pawnContainer)
         {
@@ -549,158 +473,7 @@ namespace TransFix
 
 
 
-        [Obsolete]
-        public static void Fix(this ListerPawns lp)
-        {
-            foreach (Pawn pawn in lp.AllPawns)
-            {
-                Log.Message(pawn.story.hairDef.defName);
-                if (pawn.story.hairDef == null)
-                {
-                    pawn.story.hairDef = PawnHairChooser.RandomHairDefFor(pawn, pawn.Faction.def);
-                    Log.Message("Add hair for " + pawn.Name);
-                }
-            }
-        }
-        private static void ExposeData4ResearchManager(Saveable saveable)
-        {
-            ResearchManager researchManager = (ResearchManager)saveable;
-            Scribe_Defs.LookDef<ResearchProjectDef>(ref researchManager.currentProj, "currentProj");
-            Dictionary<ResearchProjectDef, float> dictionary = Scribe_Fix.getProgress(researchManager);
-            Scribe_Fix.LookDictionary<ResearchProjectDef, float>(ref dictionary, "progress", LookMode.DefReference, LookMode.Value);
-        }
-        private static void ExposeData4TerrainGrid(Saveable saveable)
-        {
-            TerrainGrid tg = (TerrainGrid)saveable;
-            string compressedString = string.Empty;
-            if (Scribe.mode == LoadSaveMode.Saving)
-            {
-                compressedString = GridSaveUtility.CompressedStringForShortGrid((IntVec3 c) => tg.grid[CellIndices.CellToIndex(c)].shortHash);
-            }
-            Scribe_Values.LookValue<string>(ref compressedString, "terrainGridCompressed", null, false);
-            if (Scribe.mode == LoadSaveMode.LoadingVars)
-            {
-                Dictionary<ushort, TerrainDef> dictionary = new Dictionary<ushort, TerrainDef>();
-                foreach (TerrainDef current in DefDatabase<TerrainDef>.AllDefs)
-                {
-                    dictionary.Add(current.shortHash, current);
-                }
-                TerrainDef terrainDef = TerrainDef.Named("Sand");
-                foreach (GridSaveUtility.LoadedGridShort current2 in GridSaveUtility.LoadedUShortGrid(compressedString))
-                {
-                    TerrainDef terrainDef2 = null;
-                    if (!dictionary.TryGetValue(current2.val, out terrainDef2) || terrainDef2 == null)
-                    {
-                        string[] array = new string[5];
-                        array[0] = "Did not find terrain def with short hash ";
-                        string[] arg_FE_0 = array;
-                        int arg_FE_1 = 1;
-                        ushort val = current2.val;
-                        arg_FE_0[arg_FE_1] = val.ToString();
-                        array[2] = " for square ";
-                        string[] arg_121_0 = array;
-                        int arg_121_1 = 3;
-                        IntVec3 pos = current2.pos;
-                        arg_121_0[arg_121_1] = pos.ToString();
-                        array[4] = ".";
-                        Log.Error(string.Concat(array));
-                        if (dictionary.TryGetValue((ushort)(current2.val - 1), out terrainDef2) && terrainDef2 != null)
-                        {
-                            Log.Warning("Try another hash, found " + terrainDef2.label + terrainDef2.shortHash.ToString());
-                        }
-                        else
-                        {
-                            if (dictionary.TryGetValue((ushort)(current2.val + 1), out terrainDef2) && terrainDef2 != null)
-                            {
-                                Log.Warning("Try another hash, found " + terrainDef2.label + terrainDef2.shortHash.ToString());
-                            }
-                            else
-                            {
-                                Log.Warning("Not found, Use " + terrainDef2.label + terrainDef2.shortHash.ToString() + "instead.");
-                                terrainDef2 = terrainDef;
-                            }
-                        }
-                        dictionary[current2.val] = terrainDef2;
-                    }
-                    tg.grid[CellIndices.CellToIndex(current2.pos)] = terrainDef2;
-                }
-            }
-        }
-
-        public static IEnumerable<Thing> ThingsToSpawnAfterLoad(MapFileCompressor compressor)
-        {
-            DeepProfiler.Start("calc hash map.");
-            Dictionary<ushort, ThingDef> dictionary = new Dictionary<ushort, ThingDef>();
-            foreach (ThingDef current in DefDatabase<ThingDef>.AllDefs)
-            {
-                if (dictionary.ContainsKey(current.shortHash))
-                {
-                    Log.Error(string.Concat(new string[]
-			        {
-				        "Hash collision between ",
-				        current.label,
-				        " and  ",
-				        dictionary[current.shortHash].label,
-				        ": both have short hash ",
-				        current.shortHash.ToString()
-			        }));
-                }
-                else
-                {
-                    dictionary.Add(current.shortHash, current);
-                }
-            }
-            DeepProfiler.End("calc hash map.");
-            ThingDef[] array = new ThingDef[]
-	        {
-		        ThingDef.Named("Sandstone"),
-		        ThingDef.Named("Limestone"),
-		        ThingDef.Named("Granite"),
-		        ThingDef.Named("Slate"),
-		        ThingDef.Named("Marble")
-	        };
-            DeepProfiler.Start("LoadedUShortGrid");
-            IEnumerable<GridSaveUtility.LoadedGridShort> enumerable = GridSaveUtility.LoadedUShortGrid(Scribe_Fix.getCompressedString(compressor));
-            DeepProfiler.End("LoadedUShortGrid");
-            DeepProfiler.Start("init");
-            foreach (GridSaveUtility.LoadedGridShort current2 in enumerable)
-            {
-                if (current2.val != 0)
-                {
-                    ThingDef thingDef = null;
-                    if (!dictionary.TryGetValue(current2.val, out thingDef) || thingDef == null)
-                    {
-                        Log.Warning("Map compressor decompression error: No thingDef with short hash " + current2.val);
-                        if (dictionary.TryGetValue((ushort)(current2.val - 1), out thingDef) && thingDef != null)
-                        {
-                            Log.Warning("Try another hash, found " + thingDef.label + thingDef.shortHash.ToString());
-                        }
-                        else
-                        {
-                            if (dictionary.TryGetValue((ushort)(current2.val + 1), out thingDef) && thingDef != null)
-                            {
-                                Log.Warning("Try another hash, found " + thingDef.label + thingDef.shortHash.ToString());
-                            }
-                            else
-                            {
-                                thingDef = array[(int)current2.val % array.Length];
-                                Log.Warning("Not found, Use " + thingDef.label + thingDef.shortHash.ToString() + "instead.");
-                            }
-                        }
-                        dictionary[current2.val] = thingDef;
-                    }
-                    if (thingDef != null)
-                    {
-                        Thing thing = ThingMaker.MakeThing(thingDef, null);
-                        thing.SetPositionDirect(current2.pos);
-                        yield return thing;
-                    }
-                }
-            }
-            DeepProfiler.End("init");
-            yield break;
-        }
-        private static Type GetTypeFast(string name)
+         private static Type GetTypeFast(string name)
         {
             Type type;
             if (name == null)
@@ -726,31 +499,57 @@ namespace TransFix
             Scribe_Fix.typeCache.Clear();
             Scribe_Fix.modCache.Clear();
         }
+
         public static void CheckMapGen()
         {
+
+            //var oilDepositDef = DefDatabase<ThingDef>.GetNamedSilentFail("OilDeposit");
+            //if (oilDepositDef != null &&
+            //    !Find.ListerThings.ThingsOfDef(oilDepositDef).Any())//!TTM_GameStartSpawns for still loading
+            //{
+            //}
             try
             {
-                MapGeneratorDef random = DefDatabase<MapGeneratorDef>.GetRandom();
-                if (random != null)
+                var defaultGen = DefDatabase<MapGeneratorDef>.GetRandom();
+                if (defaultGen != null)
                 {
-                    bool flag = false;
-                    foreach (Genstep current in random.gensteps)
+                    bool found = false;
+                    //hack: TTMCustomEvents.Initializer init for TTMa7 while they are not the same
+                    Type ttmceInit = GenTypes.GetTypeInAnyAssembly("TTMCustomEvents.Initializer");
+                    foreach (var cur in defaultGen.gensteps)
                     {
-                        if (!Scribe_Fix.modCache.Contains(current.GetType().Assembly))
+                        var curType = cur.GetType();
+                        if (!modCache.Contains(cur.GetType().Assembly))
                         {
-                            current.Generate();
-                            flag = true;
+                            bool gen = true;
+                            if (curType == ttmceInit)
+                            {
+                                ThingDef oilDef = DefDatabase<ThingDef>.GetNamedSilentFail("OilDeposit");
+                                if (oilDef != null)
+                                {
+                                    Type oilClass = oilDef.thingClass;
+                                    if (oilClass != null)
+                                    {
+                                        gen = !modCache.Contains(oilClass.Assembly);
+                                    }
+                                    else
+                                    {
+                                        gen = !Find.ListerThings.ThingsOfDef(oilDef).Any();
+                                    }
+                                }
+                            }
+                            if (gen)
+                            {
+                                cur.Generate();
+                                found = true;
+                            }
                         }
                     }
-                    if (flag)
-                    {
+                    if (found)
                         Log.Message("The world is changing all the time, I will give you some things.");
-                    }
                 }
             }
-            catch
-            {
-            }
+            catch { }
         }
 
 

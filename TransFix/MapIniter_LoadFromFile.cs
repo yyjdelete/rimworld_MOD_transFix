@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using TransFix.Extends;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -30,7 +31,7 @@ namespace TransFix
             Scribe_Deep.LookDeep<PassingShipManager>(ref map.passingShipManager, "visitorManager");
             Scribe_Deep.LookDeep<TutorNoteManager>(ref map.tutorNoteManager, "tutorNoteManager");
             Scribe_Deep.LookDeep<ConceptTracker>(ref map.conceptTracker, "conceptTracker");
-            Scribe_Deep.LookDeep<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager");
+            Scribe_Fix.LookDeepNotNull<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager", new object[0]);
             Scribe_Deep.LookDeep<FogGrid>(ref map.fogGrid, "fogGrid");
             Scribe_Deep.LookDeep<RoofGrid>(ref map.roofGrid, "roofGrid");
             Scribe_Fix.LookDeepNotNull<TerrainGrid>(ref map.terrainGrid, "terrainGrid", null);
@@ -64,7 +65,7 @@ namespace TransFix
                 Log.Warning("Version mismatch: Map file is version " + MapInitData.loadedVersion + ", we are running version " + VersionControl.versionStringFull + ".");
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used before init MapInfo");
-            Scribe_Deep.LookDeep<MapInfo>(ref Find.Map.info, "mapInfo");
+            Scribe_Fix.LookDeepNotNull<MapInfo>(ref Find.Map.info, "mapInfo", new object[0]);
             if (!MapFiles.IsAutoSave(mapFileName))
             {
                 Find.Map.info.fileName = mapFileName;
@@ -85,7 +86,7 @@ namespace TransFix
             //List<Thing> second = compressor.ThingsToSpawnAfterLoad().ToList<Thing>();
             Log.Message(sw.ElapsedMilliseconds + "ms used before ThingsToSpawnAfterLoad");
             Log.Message("Fix ThingsToSpawnAfterLoad...");
-            IEnumerable<Thing> second = Scribe_Fix.ThingsToSpawnAfterLoad(compressor);
+            IEnumerable<Thing> second = compressor.ThingsToSpawnAfterLoadEx();
             Log.Message(sw.ElapsedMilliseconds + "ms used before LookListNotNull");
             List<Thing> list = new List<Thing>(0x10000);//50447 in my case
             Scribe_Fix.LookListNotNull<Thing>(ref list, "things", LookMode.Deep, null);

@@ -31,6 +31,14 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Extends\FactionManagerEx.cs" />
+    <Compile Include="Extends\MapConditionManagerEx.cs" />
+    <Compile Include="Extends\MapFileCompressorEx.cs" />
+    <Compile Include="Extends\MapInfoEx.cs" />
+    <Compile Include="Extends\ResearchManagerEx.cs" />
+    <Compile Include="Extends\TerrainGridEx.cs" />
+    <Compile Include="Extends\WorldEx.cs" />
+    <Compile Include="Extends\WorldLoaderEx.cs" />
     <Compile Include="LoadCrossRefHandlerEx.cs" />
     <Compile Include="MapIniter_LoadFromFile.cs" />
     <Compile Include="ModInitializer.cs" />
