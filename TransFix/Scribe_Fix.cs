@@ -8,6 +8,7 @@ using System.Xml;
 using TransFix.Extends;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace TransFix
 {
@@ -118,11 +119,13 @@ namespace TransFix
                             {
                                 item = ScribeExtractor.ValueFromNode<T>(subNode, default(T));
                             }
-                            catch
+                            catch (Exception e)
                             {
+                                Log.Notify_Exception(e);
                                 item = default(T);
                                 Log.Warning("Failed to LookList(mode=" + lookMode + "): " + listLabel + "[" + typeof(T).ToString() + "]\nSubnode:\n" + subNode.OuterXml);
                             }
+                            //仅在模式不为Skip或Skip且不为默认值的情况下成立
                             if (errMode != ErrMode.Skip || !object.Equals(item, default(T)))
                             {
                                 list.Add(item);
@@ -143,7 +146,7 @@ namespace TransFix
                             }
                             catch (Exception e)
                             {
-                                //Log.Notify_Exception(e);
+                                Log.Notify_Exception(e);
                                 item = default(T);
                                 Log.Warning("Failed to LookList(mode=" + lookMode + "): " + listLabel + "[" + typeof(T).ToString() + "]\nSubnode:\n" + subNode.OuterXml);
                             }
@@ -164,8 +167,9 @@ namespace TransFix
                             {
                                 item = ScribeExtractor.DefFromNodeUnsafe<T>(subNode);//DefFromNodeUnsafe == DefFromNode
                             }
-                            catch
+                            catch (Exception e)
                             {
+                                Log.Notify_Exception(e);
                                 item = default(T);
                                 Log.Warning("Failed to LookList(mode=" + lookMode + "): " + listLabel + "[" + typeof(T).ToString() + "]\nSubnode:\n" + subNode.OuterXml);
                             }
@@ -185,8 +189,9 @@ namespace TransFix
                             {
                                 item = (T)(System.Object)ScribeExtractor.TargetPackFromNode(subNode, TargetPack.Invalid);
                             }
-                            catch
+                            catch (Exception e)
                             {
+                                Log.Notify_Exception(e);
                                 item = default(T);
                                 Log.Warning("Failed to LookList(mode=" + lookMode + "): " + listLabel + "[" + typeof(T).ToString() + "]\nSubnode:\n" + subNode.OuterXml);
                             }
@@ -233,7 +238,7 @@ namespace TransFix
             }
         }
 
-        public static void LookDeepNotNull<T>(ref T target, string label, params object[] ctorArgs) where T : Saveable
+        public static void LookDeepNotNull<T>(ref T target, string label, Func<T> def, params object[] ctorArgs) where T : Saveable
         {
             if (Scribe.mode == LoadSaveMode.Saving)
             {
@@ -258,17 +263,25 @@ namespace TransFix
             {
                 try
                 {
-                    target = Scribe_Fix.SaveableFromNode<T>(Scribe.curParent[label], ctorArgs);
+                    target = Scribe_Fix.SaveableFromNode<T>(Scribe.curParent[label], ctorArgs, false);
                 }
                 catch
                 {
-                    Log.Warning("Bad data for " + label + ": " + typeof(T) + "\nSubnode:\n" + Scribe.curParent[label]);
+                    Log.Warning("Bad data for " + label + ": " + typeof(T) + "\nSubnode:\n" + ((Scribe.curParent[label] != null) ? Scribe.curParent[label].OuterXml : "<null>"));
                     //bad data, clean
                     if (target == null)
                     {
-                        Log.Warning("Use default");
-                        target = (T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeof(T)) : Activator.CreateInstance(typeof(T), ctorArgs));
-                        //target = (T)Activator.CreateInstance(typeof(T), ctorArgs);
+                        if (def == null)
+                        {
+                            Log.Warning("Use new");
+                            target = (T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeof(T)) : Activator.CreateInstance(typeof(T), ctorArgs));
+                            //target = (T)Activator.CreateInstance(typeof(T), ctorArgs);
+                        }
+                        else
+                        {
+                            Log.Warning("Use default");
+                            target = def();
+                        }
                     }
                 }
             }
@@ -352,14 +365,23 @@ namespace TransFix
             exposeDataOveride.Add(typeof(MapConditionManager), (saveable) => ((MapConditionManager)saveable).ExposeDataEx());
             exposeDataOveride.Add(typeof(MapInfo), (saveable) => ((MapInfo)saveable).ExposeDataEx());
             exposeDataOveride.Add(typeof(TerrainGrid), (saveable) => ((TerrainGrid)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(ZoneManager), (saveable) => ((ZoneManager)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(Zone), (saveable) => ((Zone)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(Zone_Growing), (saveable) => ((Zone_Growing)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(Zone_Stockpile), (saveable) => ((Zone_Stockpile)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(Pawn), (saveable) => ((Pawn)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(Pawn_HealthTracker), (saveable) => ((Pawn_HealthTracker)saveable).ExposeDataEx());
         }
 
-        public static T SaveableFromNode<T>(XmlNode subNode, object[] ctorArgs)
+        public static T SaveableFromNode<T>(XmlNode subNode, object[] ctorArgs, bool ignoreEmpty = true)
         {
             T local;
-            if (subNode == null)
+            if (subNode == null)//maybe new version
             {
-                return default(T);
+                Log.Warning("empty node??");
+                throw new InvalidOperationException("empty node!!");
+                return ignoreEmpty ?
+                    default(T) :((T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeof(T)) : Activator.CreateInstance(typeof(T), ctorArgs)));//default(T);
             }
             XmlAttribute attribute = subNode.Attributes["IsNull"];
             if ((attribute != null) && (attribute.Value == "True"))
@@ -401,15 +423,33 @@ namespace TransFix
                 {
                     throw new ArgumentNullException("classType");
                 }
+                else if (typeof(Thing).IsAssignableFrom(typeInAnyAssembly))
+                {
+                    ThingDef def = null;
+                    var element = subNode["def"];
+                    if (element != null)
+                    {
+                        //Log.Warning("x" + element.InnerText);
+                        //Log.Warning("x" + element.Value);
+                        def = DefDatabase<ThingDef>.GetNamedSilentFail(element.InnerText);
+                    }
+                    if (def == null)
+                    {
+                        var msg = "def is not found " + ((element != null) ? element.InnerText : "<unknown>");
+                        Log.Message(msg);
+                        throw new InvalidOperationException(msg);
+                    }
+                }
+
 
                 T local2 = (T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeInAnyAssembly) : Activator.CreateInstance(typeInAnyAssembly, ctorArgs));
                 XmlNode curParent = Scribe.curParent;
                 Scribe.curParent = subNode;
-                //不能随意条件此元素的位置, 对ExposeData中引用了LookMode.TargetPack或者LookReference的情况, 最终解析顺序必须和原始队列完全一致
+                //不能随意调节此元素的位置, 对ExposeData中引用了LookMode.TargetPack或者LookReference的情况, 最终解析顺序必须和原始队列完全一致
                 state = LoadCrossRefHandlerEx.SaveState();
-                LoadCrossRefHandler.RegisterLoadedSaveable((Saveable)local2);
                 try
                 {
+                    LoadCrossRefHandler.RegisterLoadedSaveable((Saveable)local2);
                     Action<Saveable> func;
                     if (!exposeDataOveride.TryGetValue(typeInAnyAssembly, out func) || func == null)
                     {
@@ -420,9 +460,10 @@ namespace TransFix
                         func((Saveable)local2);
                     }
                 }
-                catch
+                catch(Exception e)
                 {
-                    Log.Warning("ExposeData failed.");
+                    Log.Warning(e.ToString());
+                    Log.Warning("ExposeData failed." + subNode.OuterXml);
                     throw;
                 }
                 finally
@@ -440,7 +481,7 @@ namespace TransFix
                 Log.Notify_Exception(e);
                 local = default(T);
                 object[] objArray1 = new object[] { "SaveableFromNode exception.\nSubnode:\n", subNode.OuterXml };
-                throw new InvalidOperationException(string.Concat(objArray1));
+                throw new InvalidOperationException(string.Concat(objArray1), e);
             }
             return local;
         }
@@ -456,6 +497,8 @@ namespace TransFix
                 Pawn cur = thing as Pawn;
                 if (cur != null)
                 {
+                    //if (!cur.RaceProps.humanoid)
+                    //    continue;
                     //Log.Message("619");
                     //hair
                     //Log.Message(cur.Nickname);
@@ -471,9 +514,37 @@ namespace TransFix
                     //cloth
                     
                     //attach
+
+                    //jobs
+                    var jobs = cur.jobs;
+                    if (jobs != null && jobs.curJob != null)
+                    {
+                        //if (jobs.curJob.targetA == null)
+                        //{
+                        //    jobs.EndCurrentJob(JobCondition.Errored);
+                        //}
+
+                    }
+
+                    if (cur.healthTracker != null)
+                    {
+                        var bodyModel = cur.healthTracker.bodyModel;
+                        if (bodyModel != null)
+                        {
+                            bodyModel.healthDiffs.RemoveAll(diff =>
+                            {
+                                return diff.def == null ||
+                                    diff.body == null ||
+                                    diff.source == null ||
+                                    diff.sourceBodyPartGroup == null ||
+                                    diff.sourceHealthDiffDef == null;
+                            });
+                        }
+                    }
                 }
             }
         }
 
     }
 }
+//Environment.StackTrace;

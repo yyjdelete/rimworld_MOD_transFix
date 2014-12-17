@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Xml;
 using TransFix.Extends;
 using UnityEngine;
 using Verse;
@@ -13,18 +14,18 @@ namespace TransFix
 {
     public class MapIniter_LoadFromFile
     {
-
         public static void ExposeComponents(Map map)
         {
             Scribe_Deep.LookDeep<ColonyInfo>(ref map.colonyInfo, "colonyInfo");
             Scribe_Deep.LookDeep<PlaySettings>(ref map.playSettings, "playSettings");
             Scribe_Deep.LookDeep<RealTime>(ref Find.RootMap.realTime, "realTime");
-            Scribe_Deep.LookDeep<StoryWatcher>(ref map.storyWatcher, "storyWatcher");
+            //StoryWatcher->StoryState->Dictionary<IncidentDef, int>
+            Scribe_Fix.LookDeepNotNull<StoryWatcher>(ref map.storyWatcher, "storyWatcher", null, null);
             Scribe_Deep.LookDeep<GameEnder>(ref map.gameEnder, "gameEnder");
             Scribe_Deep.LookDeep<LetterStack>(ref map.letterStack, "letterStack");
             Scribe_Deep.LookDeep<TickManager>(ref map.tickManager, "tickManager");
             Scribe_Deep.LookDeep<WeatherManager>(ref map.weatherManager, "weatherManager");
-            Scribe_Fix.LookDeepNotNull<ResearchManager>(ref map.researchManager, "researchManager", null);//FIX Research
+            Scribe_Fix.LookDeepNotNull<ResearchManager>(ref map.researchManager, "researchManager", null, null);//FIX Research
             Scribe_Deep.LookDeep<Storyteller>(ref map.storyteller, "storyteller");
             Scribe_Deep.LookDeep<ReservationManager>(ref map.reservationManager, "reservationManager");
             Scribe_Deep.LookDeep<DesignationManager>(ref map.designationManager, "designationManager");
@@ -32,18 +33,18 @@ namespace TransFix
             Scribe_Deep.LookDeep<PassingShipManager>(ref map.passingShipManager, "visitorManager");
             //Scribe_Deep.LookDeep<TutorNoteManager>(ref map.tutorNoteManager, "tutorNoteManager");
             //Scribe_Deep.LookDeep<ConceptTracker>(ref map.conceptTracker, "conceptTracker");
-            Scribe_Fix.LookDeepNotNull<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager");//Fix while zombie use it
+            Scribe_Fix.LookDeepNotNull<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager", null, null);//Fix while zombie use it
             Scribe_Deep.LookDeep<FogGrid>(ref map.fogGrid, "fogGrid");
             Scribe_Deep.LookDeep<RoofGrid>(ref map.roofGrid, "roofGrid");
-            Scribe_Fix.LookDeepNotNull<TerrainGrid>(ref map.terrainGrid, "terrainGrid", null);//Try rehash before set sand
+            Scribe_Fix.LookDeepNotNull<TerrainGrid>(ref map.terrainGrid, "terrainGrid", null, null);//Try rehash before set sand
             Scribe_Deep.LookDeep<BoolGrid>(ref map.homeRegionGrid, "homeRegionGrid", MapChangeType.HomeRegion);
             Scribe_Deep.LookDeep<BoolGrid>(ref map.noRoofRegionGrid, "noRoofRegionGrid", MapChangeType.NoRoofRegion);
-            Scribe_Fix.LookDeepNotNull<BoolGrid>(ref map.snowClearRegionGrid, "snowClearRegionGrid", MapChangeType.SnowClearRegion);
+            Scribe_Fix.LookDeepNotNull<BoolGrid>(ref map.snowClearRegionGrid, "snowClearRegionGrid", null, MapChangeType.SnowClearRegion);
             //FIXME: Zone的cells由squares改为了cells
-            Scribe_Fix.LookDeepNotNull<ZoneManager>(ref map.zoneManager, "zoneManager", null);
+            Scribe_Fix.LookDeepNotNull<ZoneManager>(ref map.zoneManager, "zoneManager", null, null);
             Scribe_Deep.LookDeep<History>(ref map.history, "history");
-            Scribe_Fix.LookDeepNotNull<TemperatureCache>(ref map.temperatureCache, "temperatureGrid", null);
-            Scribe_Fix.LookDeepNotNull<SnowGrid>(ref map.snowGrid, "snowGrid", null);
+            Scribe_Fix.LookDeepNotNull<TemperatureCache>(ref map.temperatureCache, "temperatureGrid", null, null);
+            Scribe_Fix.LookDeepNotNull<SnowGrid>(ref map.snowGrid, "snowGrid", null, null);
             Scribe_Fix.LookListNotNull<MapComponent>(ref map.components, "components", LookMode.Deep, null);
 
             map.CheckMapComponent();
@@ -63,6 +64,9 @@ namespace TransFix
             //return;
             //109397ms??
             Log.Message("Initializing map from file " + mapFileName + " with mods " + GenText.ToCommaList(LoadedModManager.LoadedMods.Select<Mod, string>(mod => mod.name)));
+
+            MapNewRes(MapInitData.loadedVersion, VersionControl.versionStringFull);
+
             Find.RootMap.curMap = new Map();
             string filePath = GenFilePaths.FilePathForSavedMap(mapFileName);
             //List<Thing> list = new List<Thing>();
@@ -73,7 +77,7 @@ namespace TransFix
                 Log.Warning("Version mismatch: Map file is version " + MapInitData.loadedVersion + ", we are running version " + VersionControl.versionStringFull + ".");
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used before init MapInfo");
-            Scribe_Fix.LookDeepNotNull<MapInfo>(ref Find.Map.info, "mapInfo");
+            Scribe_Fix.LookDeepNotNull<MapInfo>(ref Find.Map.info, "mapInfo", null, null);
             if (!MapFiles.IsAutoSave(mapFileName))
             {
                 Find.Map.info.fileName = mapFileName;
@@ -112,10 +116,11 @@ namespace TransFix
             Log.Message(sw.ElapsedMilliseconds + "ms used before ResolveAllCrossReferences");
             LoadCrossRefHandlerEx.ResolveAllCrossReferences();
 
-            PostLoadInitter.DoAllPostLoadInits();
             Log.Message(sw.ElapsedMilliseconds + "ms used before Fix pawn");
             Log.Message("Fix Pawns");
             list3.Fix();//before spawn, after ResolveAllCrossReferences
+
+            PostLoadInitter.DoAllPostLoadInits();
             //foreach (Faction f1 in Find.FactionManager.AllFactions)
             //{
             //    foreach (Faction f2 in Find.FactionManager.AllFactions)
@@ -133,7 +138,9 @@ namespace TransFix
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(string.Concat(new object[] { "Exception spawning loaded thing ", thing2, ": ", exception }));
+                    Log.Error(string.Concat(new object[] { "Exception spawning loaded thing ", thing2, ": ", exception, thing2.Position, thing2.Rotation }));
+                    //remove it
+                    thing2.Destroy();
                 }
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used after spawn");
@@ -153,6 +160,19 @@ namespace TransFix
             GC.Collect();
             sw.Stop();
             Log.Message(sw.ElapsedMilliseconds + "ms used.");//3957ms used.
+        }
+
+        private static void MapNewRes(string oldVer, string newVer)
+        {
+            if (oldVer != newVer)
+            {
+                //A7->A8
+                //A8: Metal->Steel, StoneBlocks->Limestone
+                if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("Metal"))
+                    DefDatabaseEx<ThingDef>.DefsByName.Add("Metal", ThingDefOf.Steel);
+                if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("StoneBlocks"))
+                    DefDatabaseEx<ThingDef>.DefsByName.Add("StoneBlocks", ThingDef.Named("Limestone"));
+            }
         }
     }
 }

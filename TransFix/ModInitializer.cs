@@ -171,7 +171,7 @@ namespace TransFix
                         }
 
                         var meat = race.meatDef;
-                        if (meat != null)//Xxx_Meat
+                        if (meat != null && meat.IsFood && meat.food != null && meat.food.isMeat)//Xxx_Meat
                         {
                             //NOTE: some pawns use Metal as meat of them!!!!
                             //Log.Message("" + def.defName + "->" + meat.defName);
@@ -301,10 +301,59 @@ namespace TransFix
                     var stuffProps = def.stuffProps;
                     if (stuffProps.stuffAdjective != null)
                     {
-                        if (!IsTranslated<ThingDef>(def.defName + ".stuffProps.nameAsStuff"))
+                        if (!IsTranslated<ThingDef>(def.defName + ".stuffProps.stuffAdjective"))//A7 new style
                         {
-                            stuffProps.stuffAdjective = null;
+                            //A6 old style
+                            string tmp;
+                            if (LanguageDatabase.activeLanguage.Translate<ThingDef>(def.defName + ".stuffProps.nameAsStuff", out tmp))
+                            {
+                                stuffProps.stuffAdjective = tmp;
+                            }
+                            else
+                            {
+                                stuffProps.stuffAdjective = null;
+                            }
                             ++count;
+                        }
+                    }
+                }
+            }
+            {
+                var steel = ThingDefOf.Steel;
+                string tmp;
+                if (!IsTranslated<ThingDef>(steel.defName + ".label"))
+                {
+                    if (LanguageDatabase.activeLanguage.Translate<ThingDef>("Metal.label", out tmp))
+                    {
+                        steel.label = tmp;
+                    }
+                }
+                if (!IsTranslated<ThingDef>(steel.defName + ".description"))
+                {
+                    if (LanguageDatabase.activeLanguage.Translate<ThingDef>("Metal.description", out tmp))
+                    {
+                        steel.description = tmp;
+                    }
+                }
+                if (steel.IsStuff)//Maybe Plant
+                {
+                    var stuffProps = steel.stuffProps;
+                    if (stuffProps != null)
+                    {
+                        if (!IsTranslated<ThingDef>(steel.defName + ".stuffProps.stuffAdjective"))//A7 new style
+                        {
+                            //A6 old style
+                            if (!LanguageDatabase.activeLanguage.Translate<ThingDef>(steel.defName + ".stuffProps.nameAsStuff", out tmp) &&
+                                !LanguageDatabase.activeLanguage.Translate<ThingDef>("Metal.stuffProps.stuffAdjective", out tmp) &&
+                                !LanguageDatabase.activeLanguage.Translate<ThingDef>("Metal.stuffProps.nameAsStuff", out tmp))
+                            {
+                                stuffProps.stuffAdjective = null;
+                            }
+                            if (stuffProps.stuffAdjective != tmp)
+                            {
+                                stuffProps.stuffAdjective = tmp;
+                                ++count;
+                            }
                         }
                     }
                 }
@@ -358,6 +407,23 @@ namespace TransFix
                     ++count;
                     //如果没有专门的汉化, 则从desc读取
                     def.descriptionDiscovered = def.description;
+                }
+            }
+            //a7兼容
+            foreach (var def in DefDatabase<WorkTypeDef>.AllDefs)
+            {
+                if (!IsTranslated<WorkTypeDef>(def.defName + ".description"))
+                {
+                    string tmp;
+                    if (LanguageDatabase.activeLanguage.Translate<WorkTypeDef>(def.defName + ".tooltipDesc", out tmp))
+                    {
+                        def.description = tmp;
+                    }
+                    //else
+                    //{
+                    //    def.description = null;
+                    //}
+
                 }
             }
 
@@ -437,6 +503,15 @@ namespace TransFix
             return dip.GetInjectionsSimple().ContainsKey(key) ||
                 dip.GetInjectionsPath().ContainsKey(key);
         }
+
+        public static string GetVal(this DefInjectionPackage dip, string key)
+        {
+            string val;
+            bool res = dip.GetInjectionsSimple().TryGetValue(key, out val) ||
+                dip.GetInjectionsPath().TryGetValue(key, out val);
+            return val;
+        }
+
         public static Dictionary<string, string> GetKeyedReplacements(this LoadedLanguage lang)
         {
             return getKeyedReplacements(lang);
@@ -457,6 +532,33 @@ namespace TransFix
         }
 
         /// <summary>
+        /// for DefInjection
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="lang"></param>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public static bool Translate<T>(this LoadedLanguage lang, string key, out string result)
+        {
+            var dips = LanguageDatabase.activeLanguage.defInjections.Where(dip => dip.defType == typeof(T));
+            
+            var res = dips.Select(dip => dip.GetVal(key))
+                .Where(val => val != null)
+                .Select(val => new { val })
+                .FirstOrDefault();
+            if (res != null)
+            {
+                result = res.val;
+                return true;
+            }
+            else
+            {
+                result = null;
+                return false;
+            }
+        }
+
+        /// <summary>
         /// for key
         /// </summary>
         /// <param name="lang"></param>
@@ -466,6 +568,18 @@ namespace TransFix
         {
 
             return LanguageDatabase.activeLanguage.GetKeyedReplacements().ContainsKey(key);
+        }
+
+        /// <summary>
+        /// for DefInjection
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="lang"></param>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public static bool Translate(this LoadedLanguage lang, string key, out string result)
+        {
+            return LanguageDatabase.activeLanguage.GetKeyedReplacements().TryGetValue(key, out result);
         }
     }
 }
