@@ -100,6 +100,7 @@ namespace TransFix
                 XmlNode node = Scribe.curParent[listLabel];
                 if (node == null)
                 {
+                    Log.Warning("List null change, maybe wrong if no-ref is used.");
                     list = null;
                 }
                 else
@@ -107,11 +108,12 @@ namespace TransFix
                     XmlAttribute attribute = node.Attributes["IsNull"];
                     if ((attribute != null) && ("true".Equals(attribute.Value, StringComparison.OrdinalIgnoreCase)))
                     {
+                        Log.Warning("List null change, maybe wrong if no-ref is used.");
                         list = null;
                     }
                     else if (lookMode == LookMode.Value)
                     {
-                        list = new List<T>();
+                        list = AllocList<T>(list, node.ChildNodes.Count);
                         foreach (XmlNode subNode in node.ChildNodes)
                         {
                             T item;
@@ -134,7 +136,7 @@ namespace TransFix
                     }
                     else if (lookMode == LookMode.Deep)
                     {
-                        list = new List<T>();
+                        list = AllocList<T>(list, node.ChildNodes.Count);
                         foreach (XmlNode subNode in node.ChildNodes)
                         {
                             //Thing
@@ -158,7 +160,7 @@ namespace TransFix
                     }
                     else if (lookMode == LookMode.DefReference)
                     {
-                        list = new List<T>();
+                        list = AllocList<T>(list, node.ChildNodes.Count);
                         foreach (XmlNode subNode in node.ChildNodes)
                         {
                             //Def
@@ -181,7 +183,7 @@ namespace TransFix
                     }
                     else if (lookMode == LookMode.TargetPack)
                     {
-                        list = new List<T>();
+                        list = AllocList<T>(list, node.ChildNodes.Count);
                         foreach (XmlNode subNode in node.ChildNodes)
                         {
                             T item;
@@ -210,6 +212,8 @@ namespace TransFix
                         }
                         LoadIDsWantedBank.RegisterLoadIDListReadFromXml(targetLoadIDList);
                     }
+                    if (list != null)
+                        list.Capacity = list.Count;//比TrimExcess极端
                 }
             }
             else if (Scribe.mode == LoadSaveMode.ResolvingCrossRefs)
@@ -238,7 +242,26 @@ namespace TransFix
             }
         }
 
-        public static void LookDeepNotNull<T>(ref T target, string label, Func<T> def, params object[] ctorArgs) where T : Saveable
+        private static List<T> AllocList<T>(List<T> orig, int count)
+        {
+            if (orig == null)
+            {
+                Log.Warning("List null change, maybe wrong if no-ref is used.");
+                orig = new List<T>(count);
+            }
+            else
+            {
+                orig.Clear();
+                orig.Capacity = count;
+            }
+            return orig;
+        }
+
+        public static void LookDeepNotNull<T>(ref T target, string label, params object[] ctorArgs) where T : Saveable
+        {
+            LookDeepNotNullWithDef(ref target, label, null, ctorArgs);
+        }
+        public static void LookDeepNotNullWithDef<T>(ref T target, string label, Func<T> def, params object[] ctorArgs) where T : Saveable
         {
             if (Scribe.mode == LoadSaveMode.Saving)
             {
@@ -294,8 +317,8 @@ namespace TransFix
             if (Scribe.mode != LoadSaveMode.PostLoadInit)
             {
                 Scribe.EnterNode(dictLabel);
-                List<K> list = new List<K>();
-                List<V> list2 = new List<V>();
+                List<K> list = new List<K>(dict.Count);
+                List<V> list2 = new List<V>(dict.Count);
                 if (Scribe.mode == LoadSaveMode.Saving)
                 {
                     foreach (KeyValuePair<K, V> pair in dict)
@@ -320,7 +343,18 @@ namespace TransFix
             }
         }
 
+        public static void LookHashSet<T>(ref HashSet<T> valueHashSet, string listLabel) where T : Def, new()
+        {
+            List<T> list = (Scribe.mode == LoadSaveMode.Saving) ? valueHashSet.ToList() : new List<T>();
 
+            Scribe_Fix.LookListNotNull<T>(ref list, listLabel, LookMode.Undefined, null);
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                valueHashSet.Clear();
+                valueHashSet.UnionWith(list);
+                valueHashSet.TrimExcess();
+            }
+        }
 #if false
         public static void LookValue<T>(ref T value, string label, T defaultValue = default(T), bool forceSave = false)
         {
@@ -354,13 +388,11 @@ namespace TransFix
 
         static Scribe_Fix()
         {
-            //BindingFlags bindFlag = BindingFlags.Instance | 
-            //    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
-            //var progressInfo = typeof(ResearchManager).GetField("progress", bindFlag);
+            RegistExposeMap();
+        }
 
-            //faster than reflection
-
-
+        private static void RegistExposeMap()
+        {
             exposeDataOveride.Add(typeof(ResearchManager), (saveable) => ((ResearchManager)saveable).ExposeDataEx());
             exposeDataOveride.Add(typeof(MapConditionManager), (saveable) => ((MapConditionManager)saveable).ExposeDataEx());
             exposeDataOveride.Add(typeof(MapInfo), (saveable) => ((MapInfo)saveable).ExposeDataEx());
@@ -371,6 +403,9 @@ namespace TransFix
             exposeDataOveride.Add(typeof(Zone_Stockpile), (saveable) => ((Zone_Stockpile)saveable).ExposeDataEx());
             exposeDataOveride.Add(typeof(Pawn), (saveable) => ((Pawn)saveable).ExposeDataEx());
             exposeDataOveride.Add(typeof(Pawn_HealthTracker), (saveable) => ((Pawn_HealthTracker)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(Pawn_PathFollower), (saveable) => ((Pawn_PathFollower)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(StorageSettings), (saveable) => ((StorageSettings)saveable).ExposeDataEx());
+            exposeDataOveride.Add(typeof(ThingFilter), (saveable) => ((ThingFilter)saveable).ExposeDataEx());
         }
 
         public static T SaveableFromNode<T>(XmlNode subNode, object[] ctorArgs, bool ignoreEmpty = true)
@@ -380,8 +415,6 @@ namespace TransFix
             {
                 Log.Warning("empty node??");
                 throw new InvalidOperationException("empty node!!");
-                return ignoreEmpty ?
-                    default(T) :((T)((ctorArgs == null || ctorArgs.Length == 0) ? Activator.CreateInstance(typeof(T)) : Activator.CreateInstance(typeof(T), ctorArgs)));//default(T);
             }
             XmlAttribute attribute = subNode.Attributes["IsNull"];
             if ((attribute != null) && (attribute.Value == "True"))
@@ -489,23 +522,19 @@ namespace TransFix
 
         public static void Fix(this IEnumerable<Thing> pawnContainer)
         {
-            //Log.Message("611");
             //Fix Pawn.story.hairDef
             foreach (Thing thing in pawnContainer)
             {
-                //Log.Message("615");
                 Pawn cur = thing as Pawn;
                 if (cur != null)
                 {
                     //if (!cur.RaceProps.humanoid)
                     //    continue;
-                    //Log.Message("619");
                     //hair
                     //Log.Message(cur.Nickname);
                     //Log.Message("622" + cur.story);
                     if (cur.story != null && cur.story.hairDef == null)
                     {
-                        //Log.Message("625");
                         cur.story.hairDef = PawnHairChooser.RandomHairDefFor(cur, cur.Faction.def);
                         Log.Message("Add hair for " + cur.Nickname);
                     }
@@ -540,6 +569,11 @@ namespace TransFix
                                     diff.sourceHealthDiffDef == null;
                             });
                         }
+                    }
+
+                    if (cur.psychology != null)
+                    {
+                        cur.psychology.Fix();
                     }
                 }
             }

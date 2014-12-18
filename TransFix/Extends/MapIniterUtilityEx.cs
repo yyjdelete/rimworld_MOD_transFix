@@ -21,6 +21,20 @@ namespace TransFix.Extends
             DeepProfiler.Start("UpdatePowerNetsAndConnections_First");
             PowerNetManager.UpdatePowerNetsAndConnections_First();//1
             DeepProfiler.End("UpdatePowerNetsAndConnections_First");
+
+            TemperatureSaveLoadEx.ApplyLoadedDataToRegions();
+            foreach (Thing thing in Find.ListerThings.AllThings.ToList<Thing>())
+            {
+                try
+                {
+                    thing.PostMapInit();
+                }
+                catch (Exception exception)
+                {
+                    Log.Error(string.Concat(new object[] { "Exception PostLoadAllSpawned in ", thing, ": ", exception }));
+                }
+            }
+            Find.Map.listerFilth.Init();
             DeepProfiler.Start("RegenerateEverythingNow");
             //Find.Map.mapDrawer.RegenerateEverythingNow();//7163
             Find.Map.mapDrawer.RegenerateEverythingNowEx();//7163
@@ -46,6 +60,7 @@ namespace TransFix.Extends
             DeepProfiler.Start("Initialized");
             Map.Initialized = true;//0
             DeepProfiler.End("Initialized");
+            DeepProfiler.Output();
         }
 
     }

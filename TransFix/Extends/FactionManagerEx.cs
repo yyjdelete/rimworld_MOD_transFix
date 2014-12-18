@@ -25,9 +25,10 @@ namespace TransFix.Extends
         {
             List<Faction> allFactions = fm.AllFactionsListForReading;
             Scribe_Fix.LookListNotNull<Faction>(ref allFactions, "allFactions", LookMode.Deep, null);
+            //FIXME: set 
         }
 
-        public static void Fix(this FactionManager fm)
+        public static bool Fix(this FactionManager fm)
         {
             //Fix faction
             var facts = fm.AllFactionsListForReading;
@@ -103,6 +104,8 @@ namespace TransFix.Extends
                     }
                 }
             }
+
+            return count > 0;
         }
     }
 }

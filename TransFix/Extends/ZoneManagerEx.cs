@@ -37,6 +37,7 @@ namespace TransFix.Extends
         {
             var allZones = getAllZones(zm);
             Scribe_Fix.LookListNotNull<Zone>(ref allZones, "allZones", LookMode.Deep, null);
+            //FIXME: set 
             if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
                 callRebuildZoneGrid(zm);

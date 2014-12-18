@@ -11,7 +11,6 @@
     <AssemblyName>TransFix</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile>Unity Full v3.5</TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -44,9 +43,12 @@
     <Compile Include="Extends\MapIniterUtilityEx.cs" />
     <Compile Include="Extends\PawnEx.cs" />
     <Compile Include="Extends\ResearchManagerEx.cs" />
+    <Compile Include="Extends\TemperatureSaveLoadEx.cs" />
     <Compile Include="Extends\TerrainGridEx.cs" />
+    <Compile Include="Extends\PassingShipManagerEx.cs" />
     <Compile Include="Extends\WorldEx.cs" />
     <Compile Include="Extends\WorldLoaderEx.cs" />
+    <Compile Include="Extends\StorageSettingsEx.cs" />
     <Compile Include="Extends\ZoneEx.cs" />
     <Compile Include="Extends\ZoneManagerEx.cs" />
     <Compile Include="LoadCrossRefHandlerEx.cs" />
@@ -72,6 +74,9 @@
     <Reference Include="UnityEngine">
       <HintPath>..\dll\UnityEngine.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

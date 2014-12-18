@@ -1,4 +1,5 @@
 ﻿using RimWorld;
+using RimWorld.Planet;
 using RimWorld.SquadAI;
 using System;
 using System.Collections.Generic;
@@ -20,31 +21,31 @@ namespace TransFix
             Scribe_Deep.LookDeep<PlaySettings>(ref map.playSettings, "playSettings");
             Scribe_Deep.LookDeep<RealTime>(ref Find.RootMap.realTime, "realTime");
             //StoryWatcher->StoryState->Dictionary<IncidentDef, int>
-            Scribe_Fix.LookDeepNotNull<StoryWatcher>(ref map.storyWatcher, "storyWatcher", null, null);
+            Scribe_Fix.LookDeepNotNull<StoryWatcher>(ref map.storyWatcher, "storyWatcher", null);
             Scribe_Deep.LookDeep<GameEnder>(ref map.gameEnder, "gameEnder");
             Scribe_Deep.LookDeep<LetterStack>(ref map.letterStack, "letterStack");
             Scribe_Deep.LookDeep<TickManager>(ref map.tickManager, "tickManager");
             Scribe_Deep.LookDeep<WeatherManager>(ref map.weatherManager, "weatherManager");
-            Scribe_Fix.LookDeepNotNull<ResearchManager>(ref map.researchManager, "researchManager", null, null);//FIX Research
+            Scribe_Fix.LookDeepNotNull<ResearchManager>(ref map.researchManager, "researchManager", null);//FIX Research
             Scribe_Deep.LookDeep<Storyteller>(ref map.storyteller, "storyteller");
             Scribe_Deep.LookDeep<ReservationManager>(ref map.reservationManager, "reservationManager");
             Scribe_Deep.LookDeep<DesignationManager>(ref map.designationManager, "designationManager");
             Scribe_Deep.LookDeep<BrainManager>(ref map.aiSquadBrainManager, "aiKingManager");
-            Scribe_Deep.LookDeep<PassingShipManager>(ref map.passingShipManager, "visitorManager");
+            Scribe_Fix.LookDeepNotNull<PassingShipManager>(ref map.passingShipManager, "visitorManager");//贸易商
             //Scribe_Deep.LookDeep<TutorNoteManager>(ref map.tutorNoteManager, "tutorNoteManager");
             //Scribe_Deep.LookDeep<ConceptTracker>(ref map.conceptTracker, "conceptTracker");
-            Scribe_Fix.LookDeepNotNull<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager", null, null);//Fix while zombie use it
+            Scribe_Fix.LookDeepNotNull<MapConditionManager>(ref map.mapConditionManager, "mapConditionManager", null);//Fix while zombie use it
             Scribe_Deep.LookDeep<FogGrid>(ref map.fogGrid, "fogGrid");
             Scribe_Deep.LookDeep<RoofGrid>(ref map.roofGrid, "roofGrid");
-            Scribe_Fix.LookDeepNotNull<TerrainGrid>(ref map.terrainGrid, "terrainGrid", null, null);//Try rehash before set sand
+            Scribe_Fix.LookDeepNotNull<TerrainGrid>(ref map.terrainGrid, "terrainGrid", null);//Try rehash before set sand
             Scribe_Deep.LookDeep<BoolGrid>(ref map.homeRegionGrid, "homeRegionGrid", MapChangeType.HomeRegion);
             Scribe_Deep.LookDeep<BoolGrid>(ref map.noRoofRegionGrid, "noRoofRegionGrid", MapChangeType.NoRoofRegion);
-            Scribe_Fix.LookDeepNotNull<BoolGrid>(ref map.snowClearRegionGrid, "snowClearRegionGrid", null, MapChangeType.SnowClearRegion);
-            //FIXME: Zone的cells由squares改为了cells
-            Scribe_Fix.LookDeepNotNull<ZoneManager>(ref map.zoneManager, "zoneManager", null, null);
+            Scribe_Fix.LookDeepNotNull<BoolGrid>(ref map.snowClearRegionGrid, "snowClearRegionGrid", MapChangeType.SnowClearRegion);
+            //Zone的cells由squares改为了cells
+            Scribe_Fix.LookDeepNotNull<ZoneManager>(ref map.zoneManager, "zoneManager", null);
             Scribe_Deep.LookDeep<History>(ref map.history, "history");
-            Scribe_Fix.LookDeepNotNull<TemperatureCache>(ref map.temperatureCache, "temperatureGrid", null, null);
-            Scribe_Fix.LookDeepNotNull<SnowGrid>(ref map.snowGrid, "snowGrid", null, null);
+            Scribe_Fix.LookDeepNotNull<TemperatureCache>(ref map.temperatureCache, "temperatureGrid", null);
+            Scribe_Fix.LookDeepNotNull<SnowGrid>(ref map.snowGrid, "snowGrid", null);
             Scribe_Fix.LookListNotNull<MapComponent>(ref map.components, "components", LookMode.Deep, null);
 
             map.CheckMapComponent();
@@ -77,7 +78,7 @@ namespace TransFix
                 Log.Warning("Version mismatch: Map file is version " + MapInitData.loadedVersion + ", we are running version " + VersionControl.versionStringFull + ".");
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used before init MapInfo");
-            Scribe_Fix.LookDeepNotNull<MapInfo>(ref Find.Map.info, "mapInfo", null, null);
+            Scribe_Fix.LookDeepNotNull<MapInfo>(ref Find.Map.info, "mapInfo", null);
             if (!MapFiles.IsAutoSave(mapFileName))
             {
                 Find.Map.info.fileName = mapFileName;
@@ -85,7 +86,11 @@ namespace TransFix
             //NOTE: Fix Faction(Faction will be loaded by Map.ConstructComponents(), and inited after MapInfo)
             Log.Message(sw.ElapsedMilliseconds + "ms used before Fix Factions");
             Log.Message("Fix Factions");
-            Find.FactionManager.Fix();
+            if (Find.FactionManager.Fix())
+            {
+                Log.Warning("Save new Factions to world");
+                WorldSaver.SaveToFile(Current.World);
+            }
 
             Log.Message(sw.ElapsedMilliseconds + "ms used before init Map");
             MapIniterUtility.ReinitStaticMapComponents_PreConstruct();
@@ -135,10 +140,11 @@ namespace TransFix
                 try
                 {
                     GenSpawn.Spawn(thing2, thing2.Position, thing2.Rotation);
+                    //var g = thing2.Graphic;//check whether if could be draw
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(string.Concat(new object[] { "Exception spawning loaded thing ", thing2, ": ", exception, thing2.Position, thing2.Rotation }));
+                    Log.Error(string.Concat(new object[] { "Exception spawning loaded thing ", thing2, "(", thing2.Stuff ,"): ", exception, thing2.Position, thing2.Rotation }));
                     //remove it
                     thing2.Destroy();
                 }
@@ -167,11 +173,11 @@ namespace TransFix
             if (oldVer != newVer)
             {
                 //A7->A8
-                //A8: Metal->Steel, StoneBlocks->Limestone
+                //A8: Metal->Steel, StoneBlocks->BlocksLimestone
                 if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("Metal"))
                     DefDatabaseEx<ThingDef>.DefsByName.Add("Metal", ThingDefOf.Steel);
                 if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("StoneBlocks"))
-                    DefDatabaseEx<ThingDef>.DefsByName.Add("StoneBlocks", ThingDef.Named("Limestone"));
+                    DefDatabaseEx<ThingDef>.DefsByName.Add("StoneBlocks", ThingDef.Named("BlocksLimestone"));
             }
         }
     }

@@ -45,7 +45,7 @@ namespace TransFix.Extends
         public static void ExposeDataEx(this Zone_Stockpile zone)
         {
             ((Zone)zone).ExposeDataEx();
-            Scribe_Fix.LookDeepNotNull<StorageSettings>(ref zone.settings, "settings", null, zone);
+            Scribe_Fix.LookDeepNotNull<StorageSettings>(ref zone.settings, "settings", zone);
             if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
                 zone.slotGroup = new SlotGroup(zone);

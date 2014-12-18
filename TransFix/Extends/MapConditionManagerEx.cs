@@ -23,6 +23,7 @@ namespace TransFix.Extends
         {
             List<MapCondition> activeConditions = getActiveConditions(mcm);
             Scribe_Fix.LookListNotNull<MapCondition>(ref activeConditions, "activeConditions", LookMode.Deep, null);
+            //FIXME: set 
         }
 
     }
