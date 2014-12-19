@@ -525,9 +525,9 @@ namespace TransFix
             //Fix Pawn.story.hairDef
             foreach (Thing thing in pawnContainer)
             {
-                Pawn cur = thing as Pawn;
-                if (cur != null)
+                if (thing is Pawn)
                 {
+                    Pawn cur = thing as Pawn;
                     //if (!cur.RaceProps.humanoid)
                     //    continue;
                     //hair
@@ -574,6 +574,16 @@ namespace TransFix
                     if (cur.psychology != null)
                     {
                         cur.psychology.Fix();
+                    }
+                }
+                else if (thing is BillGiver)
+                {
+                    BillGiver bg = (BillGiver)thing;
+                    var stack = bg.BillStack;
+                    var bills = stack.GetBills();
+                    if (bills != null)
+                    {
+                        bills.RemoveAll(b => b == null || b.recipe == null || b.recipe.products.Count == 0);
                     }
                 }
             }

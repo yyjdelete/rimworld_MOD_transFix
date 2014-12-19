@@ -73,7 +73,11 @@ namespace TransFix.Extends
                     {
                         sections[i, j] = cur = CreateSection(new IntVec3(i, 0, j), layerFuncs);//new Section
                     }
-                    cur.RegenerateAllLayers();
+                    try
+                    {
+                        cur.RegenerateAllLayers();
+                    }
+                    catch { }
                 }
             }
         }
@@ -119,3 +123,16 @@ namespace TransFix.Extends
 #endif
     }
 }
+/*
+ NullReferenceException: Object reference not set to an instance of an object
+  at Verse.SectionLayer_FogOfWar.Regenerate () [0x00000] in <filename unknown>:0 
+
+  at Verse.Section.RegenerateAllLayers () [0x00000] in <filename unknown>:0 
+
+  at TransFix.Extends.MapDrawerEx.RegenerateEverythingNowEx (Verse.MapDrawer that) [0x00000] in <filename unknown>:0 
+
+  at TransFix.Extends.MapIniterUtilityEx.FinalizeMapInit () [0x00000] in <filename unknown>:0 
+
+  at TransFix.MapIniter_LoadFromFile.InitMapFromFile (System.String mapFileName) [0x00000] in <filename unknown>:0 
+
+  at TransFix.RootMap.Start () [0x00000] in <filename unknown>:0 */

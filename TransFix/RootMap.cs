@@ -44,6 +44,7 @@ namespace TransFix
             else
             {
                 TransFix.MapIniter_LoadFromFile.InitMapFromFile(MapInitData.mapToLoad);
+                GC.Collect();
             }
         }
     }

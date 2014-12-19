@@ -34,6 +34,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Extends\DefDatabaseEx.cs" />
+    <Compile Include="Extends\BillStackEx.cs" />
     <Compile Include="Extends\DefEx.cs" />
     <Compile Include="Extends\FactionManagerEx.cs" />
     <Compile Include="Extends\MapConditionManagerEx.cs" />

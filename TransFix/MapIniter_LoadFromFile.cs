@@ -111,7 +111,6 @@ namespace TransFix
             //Find.ListerPawns.Fix();
             Log.Message(sw.ElapsedMilliseconds + "GetThings" + list3.Count);
             //list3.AddRange(second);
-            IEnumerable<Thing> list = list3.Concat(second);
             //Log.Message(sw.ElapsedMilliseconds + "GetThings(ALL)" + list3.Count);
             //foreach (Thing thing in list3.Concat<Thing>(second))
             //{
@@ -124,6 +123,7 @@ namespace TransFix
             Log.Message(sw.ElapsedMilliseconds + "ms used before Fix pawn");
             Log.Message("Fix Pawns");
             list3.Fix();//before spawn, after ResolveAllCrossReferences
+            IEnumerable<Thing> list = list3.Concat(second);
 
             PostLoadInitter.DoAllPostLoadInits();
             //foreach (Faction f1 in Find.FactionManager.AllFactions)
@@ -135,19 +135,26 @@ namespace TransFix
             //    }
             //}
             Log.Message(sw.ElapsedMilliseconds + "ms used before spawn");
-            foreach (Thing thing2 in list)
+            try
             {
-                try
+                foreach (Thing thing2 in list)
                 {
-                    GenSpawn.Spawn(thing2, thing2.Position, thing2.Rotation);
-                    //var g = thing2.Graphic;//check whether if could be draw
+                    try
+                    {
+                        GenSpawn.Spawn(thing2, thing2.Position, thing2.Rotation);
+                        //var g = thing2.Graphic;//check whether if could be draw
+                    }
+                    catch (Exception exception)
+                    {
+                        Log.Error(string.Concat(new object[] { "Exception spawning loaded thing ", thing2, "(", thing2.Stuff, "): ", exception, thing2.Position, thing2.Rotation }));
+                        //remove it
+                        thing2.Destroy();
+                    }
                 }
-                catch (Exception exception)
-                {
-                    Log.Error(string.Concat(new object[] { "Exception spawning loaded thing ", thing2, "(", thing2.Stuff ,"): ", exception, thing2.Position, thing2.Rotation }));
-                    //remove it
-                    thing2.Destroy();
-                }
+            }
+            catch
+            {
+                Log.Error("Unpredictable end for compressed things.");
             }
             Log.Message(sw.ElapsedMilliseconds + "ms used after spawn");
             ModUtils.CheckMapGen();
@@ -163,7 +170,6 @@ namespace TransFix
             Log.Message(sw.ElapsedMilliseconds + "ms used.");
             Resources.UnloadUnusedAssets();
             ModUtils.Clean();
-            GC.Collect();
             sw.Stop();
             Log.Message(sw.ElapsedMilliseconds + "ms used.");//3957ms used.
         }
@@ -176,8 +182,15 @@ namespace TransFix
                 //A8: Metal->Steel, StoneBlocks->BlocksLimestone
                 if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("Metal"))
                     DefDatabaseEx<ThingDef>.DefsByName.Add("Metal", ThingDefOf.Steel);
+
+                var stones = new string[] { "Limestone", "Sandstone", "Granite", "Slate", "Marble" };
+                //int index = new System.Random().Next(stones.Length);
+                int index = 1;
+                var defStone = stones[index];
                 if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("StoneBlocks"))
-                    DefDatabaseEx<ThingDef>.DefsByName.Add("StoneBlocks", ThingDef.Named("BlocksLimestone"));
+                    DefDatabaseEx<ThingDef>.DefsByName.Add("StoneBlocks", ThingDef.Named("Blocks" + defStone));//BlocksLimestone
+                if (!DefDatabaseEx<ThingDef>.DefsByName.ContainsKey("ChunkRock"))
+                    DefDatabaseEx<ThingDef>.DefsByName.Add("ChunkRock", ThingDef.Named("Chunk" + defStone));//ChunkLimestone
             }
         }
     }
